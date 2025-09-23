@@ -14,7 +14,7 @@ export default function Navbar() {
                 {/* Logo and Navigation */}
                 <HStack spacing={8}>
                     <Text fontSize="3xl" fontWeight="bold" color="blue.600">
-                        indeed
+                        TakeJob
                     </Text>
 
                     <HStack
