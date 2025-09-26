@@ -1,18 +1,21 @@
-import React from "react"
-import ReactDOM from "react-dom/client"
-import App from "./App"
-import { ChakraProvider } from "@chakra-ui/react"
- 
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import { ChakraProvider } from "@chakra-ui/react";
+import { BrowserRouter } from "react-router-dom"; // ✅ Import Router
 
-const rootEl = document.getElementById("root")
+const rootEl = document.getElementById("root");
+
 if (rootEl) {
   ReactDOM.createRoot(rootEl).render(
     <React.StrictMode>
-      <ChakraProvider>
-        <App />
-      </ChakraProvider>
+      <BrowserRouter>
+        <ChakraProvider>
+          <App />
+        </ChakraProvider>
+      </BrowserRouter>
     </React.StrictMode>
-  )
+  );
 } else {
-  throw new Error("Root element not found")
+  throw new Error("Root element not found");
 }

@@ -1,10 +1,10 @@
-import { Box, Flex, HStack, Text, Button, Link } from "@chakra-ui/react";
+import { Box, Flex, HStack, Text, Button } from "@chakra-ui/react";
+import { Link as RouterLink } from "react-router-dom";
 
 export default function Navbar() {
     return (
         <Box as="header" borderBottom="1px" borderColor="gray.200" bg="white">
             <Flex
-                // maxW="7xl"
                 mx="auto"
                 px={{ base: 4, md: 6, lg: 8 }}
                 h="16"
@@ -13,7 +13,8 @@ export default function Navbar() {
             >
                 {/* Logo and Navigation */}
                 <HStack spacing={8}>
-                    <Text fontSize="3xl" fontWeight="bold" color="blue.600">
+                    <Text fontSize="3xl" fontWeight="bold" color="blue.600" as={RouterLink}
+                        to="/">
                         TakeJob
                     </Text>
 
@@ -22,8 +23,9 @@ export default function Navbar() {
                         spacing={8}
                         display={{ base: "none", md: "flex" }}
                     >
-                        <Link
-                            href="#"
+                        <Box
+                            as={RouterLink}
+                            to="/"
                             color="gray.700"
                             pb={1}
                             _hover={{
@@ -35,9 +37,11 @@ export default function Navbar() {
                             _focus={{ boxShadow: "none" }}
                         >
                             Home
-                        </Link>
-                        <Link
-                            href="#"
+                        </Box>
+
+                        <Box
+                            as={RouterLink}
+                            to="/companyreviews"
                             color="gray.700"
                             pb={1}
                             _hover={{
@@ -49,10 +53,26 @@ export default function Navbar() {
                             _focus={{ boxShadow: "none" }}
                         >
                             Company reviews
-                        </Link>
+                        </Box>
+                        <Box
+                            as={RouterLink}
+                            to="/jobpost"
+                            color="gray.700"
+                            pb={1}
+                            _hover={{
+                                textDecoration: "none",
+                                color: "blue.500",
+                                borderBottom: "2px",
+                                borderColor: "blue.600",
+                            }}
+                            _focus={{ boxShadow: "none" }}
+                        >
+                            jobpost
+                        </Box>
 
-                        <Link
-                            href="#"
+                        <Box
+                            as={RouterLink}
+                            to="/salaryguide"
                             color="gray.700"
                             pb={1}
                             _hover={{
@@ -64,16 +84,24 @@ export default function Navbar() {
                             _focus={{ boxShadow: "none" }}
                         >
                             Salary guide
-                        </Link>
+                        </Box>
                     </HStack>
                 </HStack>
 
                 {/* Right buttons */}
                 <HStack spacing={4}>
-                    <Button variant="ghost" colorScheme="blue" _focus={{ boxShadow: "none" }}>
+                    <Button
+                        as={RouterLink}
+                        to="/Auth"
+                        variant="ghost"
+                        colorScheme="blue"
+                        _focus={{ boxShadow: "none" }}
+                    >
                         Sign in
                     </Button>
                     <Button
+                        as={RouterLink}
+                        to="/employers"
                         variant="outline"
                         borderColor="blue.600"
                         color="blue.600"

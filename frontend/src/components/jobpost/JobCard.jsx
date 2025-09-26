@@ -93,14 +93,14 @@ export default function JobCard({ job, onClick }) {
         </VStack>
       )}
 
-      {job.easyApply && (
+      {/* {job.easyApply && (
         <HStack spacing={2} color="blue.600" mt={3}>
           <FaChevronRight size="10px" />
           <Text fontSize="sm" fontWeight="500">
             Easily apply
           </Text>
         </HStack>
-      )}
+      )} */}
     </Box>
   )
 }
