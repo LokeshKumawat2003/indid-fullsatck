@@ -14,7 +14,6 @@ function App() {
     <>
       {/* Navbar stays visible on all pages */}
       <Navbar />
-
       {/* Define routes here */}
       <Routes>
 
