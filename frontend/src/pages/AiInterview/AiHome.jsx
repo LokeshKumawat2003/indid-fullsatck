@@ -20,9 +20,9 @@ import {
   Avatar,
   Tooltip
 } from '@chakra-ui/react';
-import { 
-  FaStop, 
-  FaMicrophone, 
+import {
+  FaStop,
+  FaMicrophone,
   FaCode,
   FaClock,
   FaHome,
@@ -69,6 +69,245 @@ const AiHome = () => {
   ];
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
+  // Add voice synthesis functionality
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Modify speech recognition functionality
+  const [isListening, setIsListening] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const speechRecognitionRef = useRef(null);
+
+  // Add a ref to track the auto-send timeout
+  const autoSendTimeoutRef = useRef(null);
+
+  // Function to send response with voice input
+  const sendVoiceResponse = (transcript) => {
+    // If no transcript is provided, use the current voiceText
+    const responseText = transcript || voiceText;
+
+    if (responseText.trim()) {
+      // Implement your response sending logic here
+      toast({
+        title: "Response Sent",
+        description: "Your voice response has been recorded.",
+        status: "success",
+        duration: 2000,
+      });
+
+      // Optional: You might want to add logic to send the response to backend
+      // For example:
+      // sendResponseToBackend(responseText);
+
+      // Reset voice text and move to next question
+      setVoiceText('');
+      setLiveTranscript('');
+
+      // Move to next question or end interview logic
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prevIndex => prevIndex + 1);
+      } else {
+        // End of interview
+        toast({
+          title: "Interview Completed",
+          description: "You've answered all questions.",
+          status: "info",
+          duration: 3000,
+        });
+      }
+    }
+  };
+
+  // Function to start voice recording with improved auto-send
+  const startVoiceRecording = () => {
+    // Stop any ongoing speech synthesis
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
+    // Check browser support for speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      // Create speech recognition instance
+      speechRecognitionRef.current = new SpeechRecognition();
+
+      // Configure speech recognition
+      speechRecognitionRef.current.continuous = true;
+      speechRecognitionRef.current.interimResults = true;
+      speechRecognitionRef.current.lang = 'en-US'; // Set language to English
+
+      // Tracking variables for auto-send
+      let lastSpeechTime = Date.now();
+      let finalTranscript = '';
+
+      // Event handlers
+      speechRecognitionRef.current.onstart = () => {
+        setIsListening(true);
+        setLiveTranscript(''); // Clear previous transcript
+        finalTranscript = ''; // Reset final transcript
+
+        // Clear any existing auto-send timeout
+        if (autoSendTimeoutRef.current) {
+          clearTimeout(autoSendTimeoutRef.current);
+        }
+
+        toast({
+          title: "Listening",
+          description: "Speak your response... (Auto-send after 3 seconds of silence)",
+          status: "info",
+          duration: 2000,
+        });
+      };
+
+      speechRecognitionRef.current.onresult = (event) => {
+        // Combine all recognized speech
+        let interimTranscript = '';
+        let newFinalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            newFinalTranscript += event.results[i][0].transcript + ' ';
+          } else {
+            interimTranscript += event.results[i][0].transcript + ' ';
+          }
+        }
+
+        // Update final transcript
+        finalTranscript += newFinalTranscript;
+
+        // Update live transcript
+        const combinedTranscript = (interimTranscript || newFinalTranscript).trim();
+        setLiveTranscript(combinedTranscript);
+
+        // Update last speech time
+        lastSpeechTime = Date.now();
+
+        // Clear previous timeout and set a new one
+        if (autoSendTimeoutRef.current) {
+          clearTimeout(autoSendTimeoutRef.current);
+        }
+
+        // Set a new auto-send timeout
+        autoSendTimeoutRef.current = setTimeout(() => {
+          // Check if 3 seconds have passed since last speech
+          if (Date.now() - lastSpeechTime >= 3000) {
+            // Auto-send the response
+            sendVoiceResponse(finalTranscript);
+
+            // Stop recognition
+            if (speechRecognitionRef.current) {
+              speechRecognitionRef.current.stop();
+            }
+          }
+        }, 3000); // 3 seconds of silence
+      };
+
+      speechRecognitionRef.current.onerror = (event) => {
+        // Clear auto-send timeout on error
+        if (autoSendTimeoutRef.current) {
+          clearTimeout(autoSendTimeoutRef.current);
+        }
+
+        setIsListening(false);
+        setLiveTranscript('');
+        toast({
+          title: "Speech Recognition Error",
+          description: event.error,
+          status: "error",
+          duration: 3000,
+        });
+      };
+
+      speechRecognitionRef.current.onend = () => {
+        // Clear auto-send timeout
+        if (autoSendTimeoutRef.current) {
+          clearTimeout(autoSendTimeoutRef.current);
+        }
+
+        setIsListening(false);
+
+        // Auto-send if there's a final transcript
+        if (finalTranscript.trim()) {
+          sendVoiceResponse(finalTranscript);
+        }
+
+        // Clear live transcript
+        setLiveTranscript('');
+      };
+
+      // Start listening
+      speechRecognitionRef.current.start();
+    } else {
+      // Fallback for browsers without speech recognition
+      toast({
+        title: "Voice Recognition Not Supported",
+        description: "Your browser does not support speech recognition.",
+        status: "warning",
+        duration: 3000,
+      });
+    }
+  };
+
+  // Function to stop voice recording
+  const stopVoiceRecording = () => {
+    // Clear auto-send timeout
+    if (autoSendTimeoutRef.current) {
+      clearTimeout(autoSendTimeoutRef.current);
+    }
+
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      setIsListening(false);
+      setLiveTranscript('');
+    }
+  };
+
+  // Function to send response (you can customize this based on your existing logic)
+  const sendResponse = () => {
+    // Implement your response sending logic here
+    // For now, just show a toast
+    toast({
+      title: "Response Sent",
+      description: "Your response has been recorded.",
+      status: "success",
+      duration: 2000,
+    });
+
+    // Optional: Clear the voice text after sending
+    // setVoiceText('');
+  };
+
+  // Function to speak the current question
+  const speakQuestion = () => {
+    // Check if browser supports speech synthesis
+    if ('speechSynthesis' in window) {
+      // Stop any ongoing speech
+      window.speechSynthesis.cancel();
+
+      // Create a new speech utterance
+      const utterance = new SpeechSynthesisUtterance(questions[currentQuestionIndex]);
+
+      // Optional: Configure speech properties
+      utterance.rate = 0.9; // Slightly slower speech
+      utterance.pitch = 1; // Normal pitch
+
+      // Event listeners for speaking state
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+
+      // Speak the question
+      window.speechSynthesis.speak(utterance);
+    } else {
+      // Fallback for browsers that don't support speech synthesis
+      toast({
+        title: "Voice Not Supported",
+        description: "Your browser does not support text-to-speech.",
+        status: "warning",
+        duration: 3000,
+      });
+    }
+  };
+
   const bgColor = useColorModeValue('gray.50', 'gray.900');
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
@@ -76,13 +315,13 @@ const AiHome = () => {
   // Force refresh function for webcam
   const forceRefreshWebcam = () => {
     console.log('Force refreshing webcam...');
-    
+
     // Clear any existing timeout
     if (forceRefreshTimeoutRef.current) {
       clearTimeout(forceRefreshTimeoutRef.current);
       forceRefreshTimeoutRef.current = null;
     }
-    
+
     // Force stop everything
     if (webcamStreamRef.current) {
       webcamStreamRef.current.getTracks().forEach(track => track.stop());
@@ -93,7 +332,7 @@ const AiHome = () => {
       webcamRef.current.load();
     }
     setWebcamStatus('inactive');
-    
+
     // Restart after a delay
     setTimeout(() => {
       startWebcam().catch(err => {
@@ -108,7 +347,7 @@ const AiHome = () => {
     try {
       setWebcamStatus('loading');
       console.log('Starting webcam...');
-      
+
       // Stop any existing webcam stream first
       if (webcamStreamRef.current) {
         webcamStreamRef.current.getTracks().forEach(track => track.stop());
@@ -137,7 +376,7 @@ const AiHome = () => {
       }, 5000);
 
       // Request webcam with simpler constraints first
-      const webcamStream = await navigator.mediaDevices.getUserMedia({ 
+      const webcamStream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 320, max: 640 },
           height: { ideal: 240, max: 480 },
@@ -162,11 +401,11 @@ const AiHome = () => {
       // Set up webcam display with promise-based approach
       if (webcamRef.current && webcamStream) {
         console.log('Setting up webcam video element...');
-        
+
         return new Promise((resolve, reject) => {
           const video = webcamRef.current;
           let timeoutId;
-          
+
           const cleanup = () => {
             if (timeoutId) clearTimeout(timeoutId);
             if (forceRefreshTimeoutRef.current) {
@@ -178,51 +417,51 @@ const AiHome = () => {
             video.oncanplaythrough = null;
             video.onerror = null;
           };
-          
+
           const handleSuccess = () => {
             console.log('Webcam setup successful');
             cleanup();
             setWebcamStatus('active');
             resolve(webcamStream);
           };
-          
+
           const handleError = (error) => {
             console.error('Webcam setup error:', error);
             cleanup();
             setWebcamStatus('error');
             reject(error);
           };
-          
+
           // Set up event listeners
           video.onloadedmetadata = () => {
             console.log('Webcam metadata loaded');
             console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
           };
-          
+
           video.oncanplay = () => {
             console.log('Webcam can play');
             handleSuccess();
           };
-          
+
           video.oncanplaythrough = () => {
             console.log('Webcam can play through');
             handleSuccess();
           };
-          
+
           video.onerror = (e) => {
             console.error('Webcam video error:', e);
             handleError(e);
           };
-          
+
           // Set timeout as fallback
           timeoutId = setTimeout(() => {
             console.log('Webcam setup timeout - forcing success');
             handleSuccess();
           }, 3000);
-          
+
           // Set the stream
           video.srcObject = webcamStream;
-          
+
           // Force play immediately
           video.play().then(() => {
             console.log('Video play() succeeded');
@@ -244,13 +483,13 @@ const AiHome = () => {
     } catch (err) {
       console.error("Webcam start error:", err);
       setWebcamStatus('error');
-      
+
       // Clear the auto refresh timeout on error
       if (forceRefreshTimeoutRef.current) {
         clearTimeout(forceRefreshTimeoutRef.current);
         forceRefreshTimeoutRef.current = null;
       }
-      
+
       let errorMessage = "Failed to access webcam.";
       if (err.name === 'NotAllowedError') {
         errorMessage = "Camera permission denied. Please allow camera access and try again.";
@@ -260,14 +499,14 @@ const AiHome = () => {
         errorMessage = "Camera is being used by another application. Please close other apps using the camera.";
       } else if (err.name === 'OverconstrainedError') {
         errorMessage = "Camera constraints not supported. Trying with basic settings...";
-        
+
         // Retry with most basic constraints
         try {
-          const basicStream = await navigator.mediaDevices.getUserMedia({ 
+          const basicStream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: false
           });
-          
+
           webcamStreamRef.current = basicStream;
           if (webcamRef.current) {
             webcamRef.current.srcObject = basicStream;
@@ -279,7 +518,7 @@ const AiHome = () => {
           console.error('Retry with basic constraints failed:', retryErr);
         }
       }
-      
+
       toast({
         title: "Webcam Error",
         description: errorMessage,
@@ -287,7 +526,7 @@ const AiHome = () => {
         duration: 5000,
         isClosable: true,
       });
-      
+
       throw err;
     }
   };
@@ -295,7 +534,7 @@ const AiHome = () => {
   // Auto start camera and screen recording when component mounts
   useEffect(() => {
     let isMounted = true;
-  
+
 
     const autoStartRecording = async () => {
       if (!isMounted || hasStarted || isScreenRecording) {
@@ -304,16 +543,16 @@ const AiHome = () => {
       setTimeout(forceRefreshWebcam, 4000);
       try {
         await new Promise(resolve => setTimeout(resolve, 500));
-       
+
         if (!isMounted) return;
-        
+
         await startScreenRecording();
-        
+
         if (isMounted) {
           setHasStarted(true);
           setIsRecording(true);
           setIsTimerRunning(true);
-          
+
           toast({
             title: "Interview Started!",
             description: "Camera and screen recording are active.",
@@ -335,18 +574,18 @@ const AiHome = () => {
         }
       }
     };
-   
+
     autoStartRecording();
-    
+
     return () => {
       isMounted = false;
     };
   }, []);
 
   // setInterval(() => {
-   
+
   // }, 5000);
-  
+
   // Timer effect
   useEffect(() => {
     let interval = null;
@@ -375,17 +614,24 @@ const AiHome = () => {
     return () => clearInterval(interval);
   }, [isTimerRunning, timer, toast]);
 
+  // Add a method to automatically speak the first question when interview starts
+  useEffect(() => {
+    if (hasStarted && questions[currentQuestionIndex]) {
+      speakQuestion();
+    }
+  }, [hasStarted, currentQuestionIndex]);
+
   // Cleanup effect
   useEffect(() => {
     const cleanup = () => {
       console.log('=== CLEANUP ON UNMOUNT ===');
-      
+
       // Clear auto refresh timeout
       if (forceRefreshTimeoutRef.current) {
         clearTimeout(forceRefreshTimeoutRef.current);
         forceRefreshTimeoutRef.current = null;
       }
-      
+
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => {
           track.stop();
@@ -393,7 +639,7 @@ const AiHome = () => {
         });
         screenStreamRef.current = null;
       }
-      
+
       if (webcamStreamRef.current) {
         webcamStreamRef.current.getTracks().forEach(track => {
           track.stop();
@@ -401,14 +647,14 @@ const AiHome = () => {
         });
         webcamStreamRef.current = null;
       }
-      
+
       if (combinedStreamRef.current) {
         combinedStreamRef.current.getTracks().forEach(track => {
           track.stop();
         });
         combinedStreamRef.current = null;
       }
-      
+
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
         console.log('Cleanup: stopped media recorder');
@@ -420,10 +666,34 @@ const AiHome = () => {
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       cleanup();
+    };
+  }, []);
+
+  // Cleanup effect to stop speech recognition on component unmount
+  useEffect(() => {
+    return () => {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  // Cleanup effect to clear timeout on component unmount
+  useEffect(() => {
+    return () => {
+      // Stop speech recognition
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+
+      // Clear auto-send timeout
+      if (autoSendTimeoutRef.current) {
+        clearTimeout(autoSendTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -435,10 +705,10 @@ const AiHome = () => {
       }
 
       console.log('Starting recording...');
-      
+
       // Request screen sharing first
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-        video: { 
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
           mediaSource: 'screen',
           width: { ideal: 1920, max: 1920 },
           height: { ideal: 1080, max: 1080 }
@@ -458,20 +728,20 @@ const AiHome = () => {
 
       // Create combined stream for recording
       const combinedStream = new MediaStream();
-      
+
       // Add video tracks
       screenStream.getVideoTracks().forEach(track => {
         combinedStream.addTrack(track);
         console.log('Added screen video track');
       });
-      
+
       if (webcamStream) {
         webcamStream.getVideoTracks().forEach(track => {
           combinedStream.addTrack(track);
           console.log('Added webcam video track');
         });
       }
-      
+
       // Add only screen audio
       screenStream.getAudioTracks().forEach(track => {
         combinedStream.addTrack(track);
@@ -494,33 +764,33 @@ const AiHome = () => {
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
         options.mimeType = 'video/webm';
       }
-      
+
       const mediaRecorder = new MediaRecorder(combinedStream, options);
       mediaRecorderRef.current = mediaRecorder;
-      
+
       const chunks = [];
-      
+
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunks.push(e.data);
           console.log('Data chunk recorded:', e.data.size);
         }
       };
-      
+
       mediaRecorder.onstop = () => {
         console.log('MediaRecorder stopped');
         const blob = new Blob(chunks, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
-        
+
         const a = document.createElement('a');
         a.href = url;
-        a.download = `interview_recording_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.webm`;
+        a.download = `interview_recording_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
 
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        
+
         toast({
           title: "Recording Saved",
           description: "Your interview recording has been downloaded successfully.",
@@ -529,19 +799,19 @@ const AiHome = () => {
           isClosable: true,
         });
       };
-      
+
       mediaRecorder.onerror = (e) => {
         console.error('MediaRecorder error:', e);
       };
-      
+
       mediaRecorder.start(1000);
       setIsScreenRecording(true);
-      
+
       console.log('Recording started successfully');
-      
+
     } catch (err) {
       console.error("Recording start error:", err);
-      
+
       // Clean up any streams that were created
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => {
@@ -550,7 +820,7 @@ const AiHome = () => {
         });
         screenStreamRef.current = null;
       }
-      
+
       if (webcamStreamRef.current) {
         webcamStreamRef.current.getTracks().forEach(track => {
           track.stop();
@@ -558,9 +828,9 @@ const AiHome = () => {
         });
         webcamStreamRef.current = null;
       }
-      
+
       let errorMessage = "Failed to start recording. Please try again.";
-      
+
       if (err.name === 'NotAllowedError') {
         errorMessage = "Permission denied. Please allow screen sharing and camera access.";
       } else if (err.name === 'NotFoundError') {
@@ -570,7 +840,7 @@ const AiHome = () => {
       } else if (err.name === 'NotSupportedError') {
         errorMessage = "Recording not supported by this browser.";
       }
-      
+
       toast({
         title: "Recording Failed",
         description: errorMessage,
@@ -583,25 +853,25 @@ const AiHome = () => {
 
   const stopScreenRecording = () => {
     console.log('=== STOPPING SCREEN RECORDING ===');
-    
+
     try {
       // Clear auto refresh timeout
       if (forceRefreshTimeoutRef.current) {
         clearTimeout(forceRefreshTimeoutRef.current);
         forceRefreshTimeoutRef.current = null;
       }
-      
+
       if (mediaRecorderRef.current) {
         const state = mediaRecorderRef.current.state;
         console.log('MediaRecorder state:', state);
-        
+
         if (state === 'recording') {
           mediaRecorderRef.current.stop();
           console.log('MediaRecorder stopped');
         }
         mediaRecorderRef.current = null;
       }
-      
+
       if (screenStreamRef.current) {
         console.log('Stopping screen sharing tracks...');
         screenStreamRef.current.getTracks().forEach((track, index) => {
@@ -612,7 +882,7 @@ const AiHome = () => {
         screenStreamRef.current = null;
         console.log('Screen stream cleared');
       }
-      
+
       if (webcamStreamRef.current) {
         console.log('Stopping webcam tracks...');
         webcamStreamRef.current.getTracks().forEach((track, index) => {
@@ -623,7 +893,7 @@ const AiHome = () => {
         webcamStreamRef.current = null;
         console.log('Webcam stream cleared');
       }
-      
+
       if (combinedStreamRef.current) {
         console.log('Stopping combined stream tracks...');
         combinedStreamRef.current.getTracks().forEach((track, index) => {
@@ -633,20 +903,20 @@ const AiHome = () => {
         combinedStreamRef.current = null;
         console.log('Combined stream cleared');
       }
-      
+
       if (webcamRef.current) {
         webcamRef.current.srcObject = null;
         webcamRef.current.load();
         console.log('Webcam video element cleared');
       }
-      
+
       setIsScreenRecording(false);
       setIsRecording(false);
       setIsTimerRunning(false);
       setWebcamStatus('inactive');
-      
+
       console.log('=== ALL RECORDING STOPPED ===');
-      
+
       toast({
         title: "Interview Finished",
         description: "Recording stopped. Camera and screen sharing permissions revoked.",
@@ -654,19 +924,19 @@ const AiHome = () => {
         duration: 4000,
         isClosable: true,
       });
-      
+
     } catch (error) {
       console.error('Error stopping recording:', error);
-      
+
       setIsScreenRecording(false);
       setIsRecording(false);
       setIsTimerRunning(false);
       setWebcamStatus('error');
-      
+
       if (webcamRef.current) {
         webcamRef.current.srcObject = null;
       }
-      
+
       toast({
         title: "Recording Stopped",
         description: "Recording ended with some cleanup issues. Please refresh if needed.",
@@ -720,7 +990,7 @@ const AiHome = () => {
               AI Interview Assistant
             </Heading>
           </HStack>
-          
+
           <HStack spacing={3}>
             <Badge colorScheme={isTimerRunning ? 'green' : 'gray'} p={2} borderRadius="md">
               <HStack>
@@ -733,10 +1003,10 @@ const AiHome = () => {
 
         {/* Timer Progress */}
         <Box mb={4}>
-          <Progress 
-            value={getTimerProgress()} 
-            colorScheme={timer.minutes < 5 ? 'red' : 'blue'} 
-            size="sm" 
+          <Progress
+            value={getTimerProgress()}
+            colorScheme={timer.minutes < 5 ? 'red' : 'blue'}
+            size="sm"
             borderRadius="md"
           />
         </Box>
@@ -746,15 +1016,26 @@ const AiHome = () => {
           <GridItem>
             <VStack spacing={6} align="stretch">
               {/* AI Speaking Box */}
-              <Box 
-                bg={cardBg} 
+              <Box
+                bg={cardBg}
                 borderColor={borderColor}
                 borderRadius="md"
                 p={4}
                 border="2px dashed"
               >
                 <Text fontWeight="bold" color="blue.500" mb={2}>AI Interviewer says:</Text>
-                <Text fontSize="lg">{questions[currentQuestionIndex]}</Text>
+                <HStack spacing={2} align="center">
+                  <Text fontSize="lg">{questions[currentQuestionIndex]}</Text>
+                  <IconButton
+                    icon={isSpeaking ? <FaStop /> : <FaMicrophone />}
+                    onClick={speakQuestion}
+                    colorScheme={isSpeaking ? "red" : "blue"}
+                    size="sm"
+                    variant="outline"
+                    aria-label={isSpeaking ? "Stop Speaking" : "Speak Question"}
+                    isDisabled={isSpeaking}
+                  />
+                </HStack>
               </Box>
 
               {/* Code Editor */}
@@ -775,8 +1056,8 @@ const AiHome = () => {
               />
 
               {/* User Response */}
-              <Box 
-                bg={cardBg} 
+              <Box
+                bg={cardBg}
                 borderColor={borderColor}
                 borderRadius="md"
                 p={4}
@@ -789,18 +1070,42 @@ const AiHome = () => {
                   minH="120px"
                   resize="vertical"
                 />
+                {isListening && liveTranscript && (
+                  <Box
+                    bg="green.50"
+                    color="green.800"
+                    p={2}
+                    borderRadius="md"
+                    mt={2}
+                    fontSize="sm"
+                  >
+                    <Text fontWeight="bold">Live Transcript:</Text>
+                    <Text>{liveTranscript}</Text>
+                  </Box>
+                )}
                 <HStack mt={3} spacing={3}>
-                  <Button colorScheme="blue" size="sm">
+                  <Button
+                    colorScheme="blue"
+                    size="sm"
+                    onClick={sendResponse}
+                  >
                     Send Response
                   </Button>
-                  <Button 
-                    leftIcon={<FaForward />} 
-                    colorScheme="orange" 
-                    size="sm" 
+                  <Button
+                    leftIcon={<FaForward />}
+                    colorScheme="orange"
+                    size="sm"
                     onClick={skipQuestion}
                   >
                     Skip Question
                   </Button>
+                  <IconButton
+                    icon={isListening ? <FaStop /> : <FaMicrophone />}
+                    colorScheme={isListening ? "red" : "green"}
+                    onClick={isListening ? stopVoiceRecording : startVoiceRecording}
+                    size="sm"
+                    aria-label={isListening ? "Stop Recording" : "Start Recording"}
+                  />
                 </HStack>
               </Box>
             </VStack>
@@ -810,8 +1115,8 @@ const AiHome = () => {
           <GridItem>
             <VStack spacing={4} align="stretch">
               {/* AI Interviewer Profile */}
-              <Box 
-                bg={cardBg} 
+              <Box
+                bg={cardBg}
                 borderColor={borderColor}
                 borderRadius="md"
                 p={4}
@@ -823,8 +1128,8 @@ const AiHome = () => {
               </Box>
 
               {/* Controls */}
-              <Box 
-                bg={cardBg} 
+              <Box
+                bg={cardBg}
                 borderColor={borderColor}
                 borderRadius="md"
                 p={4}
@@ -834,13 +1139,15 @@ const AiHome = () => {
                   <Tooltip label="Use microphone to speak">
                     <IconButton
                       icon={<FaMicrophone />}
-                      colorScheme="blue"
+                      // colorScheme="blue"
                       aria-label="Speak"
                       w="full"
-                      onClick={() => setVoiceText("Voice input captured...")}
+                      colorScheme={isListening ? "red" : "green"}
+                      onClick={isListening ? stopVoiceRecording : startVoiceRecording}
+                    // onClick={() => setVoiceText("Voice input captured...")}
                     />
                   </Tooltip>
-                  
+
                   {/* Force Refresh Webcam - Only show when loading and needed */}
                   {webcamStatus === 'loading' && (
                     <Tooltip label="Force refresh if stuck on loading">
@@ -855,7 +1162,7 @@ const AiHome = () => {
                       </Button>
                     </Tooltip>
                   )}
-                  
+
                   <Tooltip label="Stop Interview and End Recording">
                     <Button
                       colorScheme="red"
@@ -893,8 +1200,8 @@ const AiHome = () => {
               </Box>
 
               {/* Interview Stats */}
-              <Box 
-                bg={cardBg} 
+              <Box
+                bg={cardBg}
                 borderColor={borderColor}
                 borderRadius="md"
                 p={4}
@@ -921,13 +1228,13 @@ const AiHome = () => {
                   <Flex justify="space-between">
                     <Text fontSize="sm" color="gray.500">Camera:</Text>
                     <Badge colorScheme={
-                      webcamStatus === 'active' ? 'green' : 
-                      webcamStatus === 'loading' ? 'yellow' : 
-                      webcamStatus === 'error' ? 'red' : 'gray'
+                      webcamStatus === 'active' ? 'green' :
+                        webcamStatus === 'loading' ? 'yellow' :
+                          webcamStatus === 'error' ? 'red' : 'gray'
                     }>
-                      {webcamStatus === 'active' ? 'Active' : 
-                       webcamStatus === 'loading' ? 'Loading' : 
-                       webcamStatus === 'error' ? 'Error' : 'Inactive'}
+                      {webcamStatus === 'active' ? 'Active' :
+                        webcamStatus === 'loading' ? 'Loading' :
+                          webcamStatus === 'error' ? 'Error' : 'Inactive'}
                     </Badge>
                   </Flex>
                 </VStack>
@@ -939,21 +1246,21 @@ const AiHome = () => {
 
       {/* Webcam Display - Top Right Corner */}
       {(isScreenRecording || webcamStatus === 'active') && (
-        <Box 
-          position="fixed" 
-          top="20px" 
-          right="20px" 
-          width="200px" 
-          height="150px" 
-          zIndex={1000} 
-          borderRadius="md" 
+        <Box
+          position="fixed"
+          top="20px"
+          right="20px"
+          width="200px"
+          height="150px"
+          zIndex={1000}
+          borderRadius="md"
           overflow="hidden"
           boxShadow="lg"
           border="3px solid"
           borderColor={
-            webcamStatus === 'active' ? 'green.500' : 
-            webcamStatus === 'loading' ? 'yellow.500' : 
-            webcamStatus === 'error' ? 'red.500' : 'blue.500'
+            webcamStatus === 'active' ? 'green.500' :
+              webcamStatus === 'loading' ? 'yellow.500' :
+                webcamStatus === 'error' ? 'red.500' : 'blue.500'
           }
           bg="black"
         >
@@ -962,25 +1269,25 @@ const AiHome = () => {
               <Text>Loading...</Text>
             </Flex>
           )}
-          
+
           {webcamStatus === 'error' && (
             <Flex justify="center" align="center" h="100%" color="white" direction="column">
               <FaCamera size={24} />
               <Text fontSize="xs" mt={2}>Camera Error</Text>
             </Flex>
           )}
-          
-          <video 
-            ref={webcamRef} 
+
+          <video
+            ref={webcamRef}
             autoPlay
             playsInline
             muted
             controls={false}
             width="200"
             height="150"
-            style={{ 
-              width: '100%', 
-              height: '100%', 
+            style={{
+              width: '100%',
+              height: '100%',
               objectFit: 'cover',
               transform: 'scaleX(-1)',
               backgroundColor: '#000',
@@ -997,7 +1304,7 @@ const AiHome = () => {
               setWebcamStatus('active');
             }}
           />
-          
+
           {/* Recording Indicator */}
           {isScreenRecording && (
             <Box
@@ -1015,7 +1322,7 @@ const AiHome = () => {
               ● REC
             </Box>
           )}
-          
+
           {/* Status Indicator */}
           <Box
             position="absolute"
@@ -1028,9 +1335,9 @@ const AiHome = () => {
             borderRadius="sm"
             fontSize="xs"
           >
-            {webcamStatus === 'active' ? 'LIVE' : 
-             webcamStatus === 'loading' ? 'LOADING' : 
-             webcamStatus === 'error' ? 'ERROR' : 'OFF'}
+            {webcamStatus === 'active' ? 'LIVE' :
+              webcamStatus === 'loading' ? 'LOADING' :
+                webcamStatus === 'error' ? 'ERROR' : 'OFF'}
           </Box>
         </Box>
       )}

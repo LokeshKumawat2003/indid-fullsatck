@@ -36,11 +36,11 @@ export default function Home() {
   const bgColor = useColorModeValue("gray.50", "gray.900")
   const cardBg = useColorModeValue("white", "gray.800")
   const borderColor = useColorModeValue("gray.200", "gray.600")
-  
+
   // State for job search inputs
   const [jobTitle, setJobTitle] = useState("")
   const [location, setLocation] = useState("")
-  
+
   // Hooks
   const navigate = useNavigate()
   const toast = useToast()
@@ -61,16 +61,16 @@ export default function Home() {
     }
 
     // Navigate to JobPost page with input values
-    navigate("/jobpost", { 
-      state: { 
-        jobTitle, 
-        location 
-      } 
+    navigate("/jobpost", {
+      state: {
+        jobTitle,
+        location
+      }
     })
   }
-const handlemovejob =()=>{
-  navigate("/jobpost")
-}
+  const handlemovejob = () => {
+    navigate("/jobpost")
+  }
   return (
     <Box minH="100vh" bg={bgColor}>
       {/* Header Search Section */}
@@ -90,7 +90,7 @@ const handlemovejob =()=>{
           >
             <InputGroup flex={2} maxW="400px">
               <InputLeftElement pointerEvents="none" top="5px">
-                <FiSearch color="gray.400"  />
+                <FiSearch color="gray.400" />
               </InputLeftElement>
               <Input
                 placeholder="Job title, keywords, or company"
@@ -126,7 +126,7 @@ const handlemovejob =()=>{
               />
             </InputGroup>
 
-            <Button colorScheme="blue" size="lg" px={8}   onClick={handleGetStarted} rightIcon={<FiSearch />}>
+            <Button colorScheme="blue" size="lg" px={8} onClick={handleGetStarted} rightIcon={<FiSearch />}>
               Find jobs
             </Button>
           </Flex>
@@ -161,13 +161,13 @@ const handlemovejob =()=>{
               Create an account or sign in to see your personalised job recommendations.
             </Text>
 
-            <Button 
-              colorScheme="blue" 
-              size="lg" 
-              px={8} 
-              py={6} 
-              fontSize="lg" 
-              rightIcon={<FiArrowRight />} 
+            <Button
+              colorScheme="blue"
+              size="lg"
+              px={8}
+              py={6}
+              fontSize="lg"
+              rightIcon={<FiArrowRight />}
               mt={4}
               onClick={handlemovejob}
             >
