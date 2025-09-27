@@ -153,6 +153,49 @@ button:focus-visible {
   text-align: center;
 }
 
+/* User Activity Toast Notification Styles */
+.user-activity-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #333;
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  animation: slideIn 0.3s ease-out;
+  max-width: 300px;
+}
+
+.user-activity-toast .toast-content {
+  flex-grow: 1;
+  margin-right: 10px;
+}
+
+.user-activity-toast .toast-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

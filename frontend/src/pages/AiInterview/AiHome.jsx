@@ -34,6 +34,7 @@ import {
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import CodeEditor from './CodeEditor';
+import { useUserActivityTracker } from '../../hooks/useUserActivityTracker';
 
 const AiHome = () => {
   const navigate = useNavigate();
@@ -973,6 +974,9 @@ const AiHome = () => {
     return ((totalSeconds - currentSeconds) / totalSeconds) * 100;
   };
 
+  // Add user activity tracking
+  useUserActivityTracker(toast);
+
   return (
     <Box minH="100vh" bg={bgColor} p={4} position="relative">
       <Container maxW="7xl">
@@ -1341,6 +1345,9 @@ const AiHome = () => {
           </Box>
         </Box>
       )}
+
+      {/* User Activity Toast */}
+      {/* The useUserActivityTracker hook now manages its own toast */}
     </Box>
   );
 };
