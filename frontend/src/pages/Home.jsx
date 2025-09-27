@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import {
   Box,
   Container,
@@ -21,7 +21,9 @@ import {
   AccordionPanel,
   AccordionIcon,
   useColorModeValue,
+  useToast,
 } from "@chakra-ui/react"
+import { useNavigate } from "react-router-dom"
 
 // Import only named exports correctly from react-icons
 import { FiSearch, FiMapPin, FiArrowRight, FiFileText, FiTrendingUp, FiBriefcase, FiDollarSign, FiTarget } from "react-icons/fi"
@@ -34,7 +36,41 @@ export default function Home() {
   const bgColor = useColorModeValue("gray.50", "gray.900")
   const cardBg = useColorModeValue("white", "gray.800")
   const borderColor = useColorModeValue("gray.200", "gray.600")
+  
+  // State for job search inputs
+  const [jobTitle, setJobTitle] = useState("")
+  const [location, setLocation] = useState("")
+  
+  // Hooks
+  const navigate = useNavigate()
+  const toast = useToast()
 
+  // Handle Get Started button click
+  const handleGetStarted = () => {
+    // Validate inputs
+    if (!jobTitle.trim() || !location.trim()) {
+      toast({
+        title: "Input Required",
+        description: "Please fill in both job title and location.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+        position: "top"
+      })
+      return
+    }
+
+    // Navigate to JobPost page with input values
+    navigate("/jobpost", { 
+      state: { 
+        jobTitle, 
+        location 
+      } 
+    })
+  }
+const handlemovejob =()=>{
+  navigate("/jobpost")
+}
   return (
     <Box minH="100vh" bg={bgColor}>
       {/* Header Search Section */}
@@ -62,6 +98,8 @@ export default function Home() {
                 bg="white"
                 border="1px"
                 borderColor="gray.300"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
                 _focus={{
                   borderColor: "blue.500",
                   boxShadow: "0 0 0 1px #3182ce",
@@ -79,6 +117,8 @@ export default function Home() {
                 bg="white"
                 border="1px"
                 borderColor="gray.300"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
                 _focus={{
                   borderColor: "blue.500",
                   boxShadow: "0 0 0 1px #3182ce",
@@ -86,7 +126,7 @@ export default function Home() {
               />
             </InputGroup>
 
-            <Button colorScheme="blue" size="lg" px={8} rightIcon={<FiSearch />}>
+            <Button colorScheme="blue" size="lg" px={8}   onClick={handleGetStarted} rightIcon={<FiSearch />}>
               Find jobs
             </Button>
           </Flex>
@@ -112,7 +152,7 @@ export default function Home() {
           <VStack spacing={4} maxW="2xl">
             <Heading as="h1" size="2xl" fontWeight="bold" color="gray.800" textAlign="center">
               <HStack justify="center" align="center">
-                <Text>Welcome to Indeed!</Text>
+                <Text>Welcome to TakeJob!</Text>
                 <FaHandPaper color="#3182ce" />
               </HStack>
             </Heading>
@@ -121,7 +161,16 @@ export default function Home() {
               Create an account or sign in to see your personalised job recommendations.
             </Text>
 
-            <Button colorScheme="blue" size="lg" px={8} py={6} fontSize="lg" rightIcon={<FiArrowRight />} mt={4}>
+            <Button 
+              colorScheme="blue" 
+              size="lg" 
+              px={8} 
+              py={6} 
+              fontSize="lg" 
+              rightIcon={<FiArrowRight />} 
+              mt={4}
+              onClick={handlemovejob}
+            >
               Get Started
             </Button>
           </VStack>

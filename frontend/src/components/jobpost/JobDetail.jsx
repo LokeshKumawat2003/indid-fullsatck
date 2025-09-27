@@ -24,12 +24,12 @@ import { useNavigate } from "react-router-dom";
 
 export default function JobDetail({ job }) {
   const [showCustomModal, setShowCustomModal] = useState(false);
-const navigate = useNavigate()
+  const navigate = useNavigate()
   const handleApplyNow = () => setShowCustomModal(true);
   const closeModal = () => setShowCustomModal(false);
 
   const handleAiInterviewConfirm = () => {
-  navigate("/ai")
+    navigate("/ai")
     closeModal();
   };
 
@@ -121,7 +121,7 @@ const navigate = useNavigate()
               <Box>
                 <Text fontWeight="medium" color="gray.900">Job type</Text>
                 <Text color="gray.600">
-                  {job?.jobType?.length > 0 ? job.jobType.join(", ") : 'Not specified'}
+                  {job?.jobType ?? 'Not specified'}
                 </Text>
               </Box>
             </HStack>
@@ -226,7 +226,7 @@ const navigate = useNavigate()
                 borderRadius="10px"
                 onClick={handleStandardApply}
               >
-             Continue with Job Search
+                Continue with Job Search
               </Button>
             </VStack>
 

@@ -14,7 +14,7 @@ export default function JobCard({ job, onClick }) {
       position="relative"
       borderColor="gray.300"
       shadow="sm"
-      onClick={() => onClick(job)}  // Add onClick handler
+      onClick={() => onClick(job)}
     >
       <IconButton
         aria-label="Bookmark job"
@@ -67,9 +67,8 @@ export default function JobCard({ job, onClick }) {
         <Text fontSize="sm" fontWeight="600" color="gray.800">
           {job.salary}
         </Text>
-        {job.jobType.map((type, index) => (
+        {job.jobType && (
           <Badge
-            key={index}
             bg="gray.100"
             color="gray.700"
             fontSize="xs"
@@ -78,9 +77,9 @@ export default function JobCard({ job, onClick }) {
             borderRadius="4px"
             fontWeight="500"
           >
-            {type}
+            {job.jobType}
           </Badge>
-        ))}
+        )}
       </HStack>
 
       {job.benefits && job.benefits.length > 0 && (
@@ -92,15 +91,6 @@ export default function JobCard({ job, onClick }) {
           ))}
         </VStack>
       )}
-
-      {/* {job.easyApply && (
-        <HStack spacing={2} color="blue.600" mt={3}>
-          <FaChevronRight size="10px" />
-          <Text fontSize="sm" fontWeight="500">
-            Easily apply
-          </Text>
-        </HStack>
-      )} */}
     </Box>
   )
 }
