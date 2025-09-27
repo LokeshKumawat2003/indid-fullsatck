@@ -57,6 +57,7 @@ const AiHome = () => {
   const screenStreamRef = useRef(null);
   const webcamStreamRef = useRef(null);
   const combinedStreamRef = useRef(null);
+  const forceRefreshTimeoutRef = useRef(null);
 
   // AI Questions
   const questions = [
@@ -71,6 +72,36 @@ const AiHome = () => {
   const bgColor = useColorModeValue('gray.50', 'gray.900');
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
+
+  // Force refresh function for webcam
+  const forceRefreshWebcam = () => {
+    console.log('Force refreshing webcam...');
+    
+    // Clear any existing timeout
+    if (forceRefreshTimeoutRef.current) {
+      clearTimeout(forceRefreshTimeoutRef.current);
+      forceRefreshTimeoutRef.current = null;
+    }
+    
+    // Force stop everything
+    if (webcamStreamRef.current) {
+      webcamStreamRef.current.getTracks().forEach(track => track.stop());
+      webcamStreamRef.current = null;
+    }
+    if (webcamRef.current) {
+      webcamRef.current.srcObject = null;
+      webcamRef.current.load();
+    }
+    setWebcamStatus('inactive');
+    
+    // Restart after a delay
+    setTimeout(() => {
+      startWebcam().catch(err => {
+        console.error('Force refresh failed:', err);
+        setWebcamStatus('error');
+      });
+    }, 4000);
+  };
 
   // Separate function to start webcam only
   const startWebcam = async () => {
@@ -89,6 +120,21 @@ const AiHome = () => {
         webcamRef.current.srcObject = null;
         webcamRef.current.load();
       }
+
+      // Set up auto force refresh after 5 seconds if still loading
+      forceRefreshTimeoutRef.current = setTimeout(() => {
+        if (webcamStatus === 'loading') {
+          console.log('Auto force refresh triggered after 5 seconds');
+          toast({
+            title: "Auto Refresh",
+            description: "Camera taking too long to load, refreshing automatically...",
+            status: "info",
+            duration: 3000,
+            isClosable: true,
+          });
+          forceRefreshWebcam();
+        }
+      }, 5000);
 
       // Request webcam with simpler constraints first
       const webcamStream = await navigator.mediaDevices.getUserMedia({ 
@@ -123,6 +169,10 @@ const AiHome = () => {
           
           const cleanup = () => {
             if (timeoutId) clearTimeout(timeoutId);
+            if (forceRefreshTimeoutRef.current) {
+              clearTimeout(forceRefreshTimeoutRef.current);
+              forceRefreshTimeoutRef.current = null;
+            }
             video.onloadedmetadata = null;
             video.oncanplay = null;
             video.oncanplaythrough = null;
@@ -195,6 +245,12 @@ const AiHome = () => {
       console.error("Webcam start error:", err);
       setWebcamStatus('error');
       
+      // Clear the auto refresh timeout on error
+      if (forceRefreshTimeoutRef.current) {
+        clearTimeout(forceRefreshTimeoutRef.current);
+        forceRefreshTimeoutRef.current = null;
+      }
+      
       let errorMessage = "Failed to access webcam.";
       if (err.name === 'NotAllowedError') {
         errorMessage = "Camera permission denied. Please allow camera access and try again.";
@@ -239,15 +295,16 @@ const AiHome = () => {
   // Auto start camera and screen recording when component mounts
   useEffect(() => {
     let isMounted = true;
-    
+  
+
     const autoStartRecording = async () => {
       if (!isMounted || hasStarted || isScreenRecording) {
         return;
       }
-      
+      setTimeout(forceRefreshWebcam, 4000);
       try {
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+       
         if (!isMounted) return;
         
         await startScreenRecording();
@@ -278,7 +335,7 @@ const AiHome = () => {
         }
       }
     };
-
+   
     autoStartRecording();
     
     return () => {
@@ -286,6 +343,10 @@ const AiHome = () => {
     };
   }, []);
 
+  // setInterval(() => {
+   
+  // }, 5000);
+  
   // Timer effect
   useEffect(() => {
     let interval = null;
@@ -318,6 +379,12 @@ const AiHome = () => {
   useEffect(() => {
     const cleanup = () => {
       console.log('=== CLEANUP ON UNMOUNT ===');
+      
+      // Clear auto refresh timeout
+      if (forceRefreshTimeoutRef.current) {
+        clearTimeout(forceRefreshTimeoutRef.current);
+        forceRefreshTimeoutRef.current = null;
+      }
       
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => {
@@ -383,7 +450,7 @@ const AiHome = () => {
         }
       });
 
-      // Start webcam separately
+      // Start webcam separately with auto refresh
       const webcamStream = await startWebcam();
 
       console.log('Both streams obtained');
@@ -518,6 +585,12 @@ const AiHome = () => {
     console.log('=== STOPPING SCREEN RECORDING ===');
     
     try {
+      // Clear auto refresh timeout
+      if (forceRefreshTimeoutRef.current) {
+        clearTimeout(forceRefreshTimeoutRef.current);
+        forceRefreshTimeoutRef.current = null;
+      }
+      
       if (mediaRecorderRef.current) {
         const state = mediaRecorderRef.current.state;
         console.log('MediaRecorder state:', state);
@@ -768,54 +841,14 @@ const AiHome = () => {
                     />
                   </Tooltip>
                   
-                  {/* Webcam Test Button */}
-                  <Tooltip label="Test webcam separately">
-                    <Button
-                      colorScheme="purple"
-                      w="full"
-                      leftIcon={<FaCamera />}
-                      onClick={() => {
-                        setWebcamStatus('loading');
-                        startWebcam().catch(err => {
-                          console.error('Manual webcam test failed:', err);
-                          setWebcamStatus('error');
-                        });
-                      }}
-                      isLoading={webcamStatus === 'loading'}
-                      loadingText="Starting..."
-                      size="sm"
-                    >
-                      {webcamStatus === 'error' ? 'Retry Webcam' : 'Test Webcam'}
-                    </Button>
-                  </Tooltip>
-                  
-                  {/* Force Refresh Webcam */}
+                  {/* Force Refresh Webcam - Only show when loading and needed */}
                   {webcamStatus === 'loading' && (
                     <Tooltip label="Force refresh if stuck on loading">
                       <Button
                         colorScheme="yellow"
                         w="full"
                         leftIcon={<FaCamera />}
-                        onClick={() => {
-                          // Force stop everything and restart
-                          if (webcamStreamRef.current) {
-                            webcamStreamRef.current.getTracks().forEach(track => track.stop());
-                            webcamStreamRef.current = null;
-                          }
-                          if (webcamRef.current) {
-                            webcamRef.current.srcObject = null;
-                            webcamRef.current.load();
-                          }
-                          setWebcamStatus('inactive');
-                          
-                          // Restart after a delay
-                          setTimeout(() => {
-                            startWebcam().catch(err => {
-                              console.error('Force refresh failed:', err);
-                              setWebcamStatus('error');
-                            });
-                          }, 1000);
-                        }}
+                        onClick={forceRefreshWebcam}
                         size="sm"
                       >
                         Force Refresh
