@@ -18,17 +18,7 @@ import {
   useColorModeValue,
   useToast,
   Avatar,
-  Tooltip,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  ModalBody,
-  ModalFooter,
-  Center,
-  useDisclosure,
-  Spinner
+  Tooltip
 } from '@chakra-ui/react';
 import { 
   FaStop, 
@@ -40,22 +30,19 @@ import {
   FaForward,
   FaCamera,
   FaRecordVinyl,
-  FaPlay,
-  FaExclamationTriangle
+  FaPlay
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import CodeEditor from './CodeEditor';
-import html2canvas from 'html2canvas';
-import * as faceapi from 'face-api.js';
 
 const AiHome = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // Existing states
-  const [isRecording, setIsRecording] = useState(true);
+  // Basic states
+  const [isRecording, setIsRecording] = useState(false);
   const [timer, setTimer] = useState({ minutes: 45, seconds: 0 });
-  const [isTimerRunning, setIsTimerRunning] = useState(true);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [voiceText, setVoiceText] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
   const [interviewMode] = useState('technical');
@@ -64,227 +51,12 @@ const AiHome = () => {
 
   // Screen Recording States
   const [isScreenRecording, setIsScreenRecording] = useState(false);
-  const [recordedChunks, setRecordedChunks] = useState([]);
-  const [screenshotUrl, setScreenshotUrl] = useState(null);
+  const [webcamStatus, setWebcamStatus] = useState('inactive'); // 'inactive', 'loading', 'active', 'error'
   const mediaRecorderRef = useRef(null);
-  const screenRef = useRef(null);
-
-  // Screenshot Modal State
-  const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
-
-  // Permission and Face Detection States
-  const [cameraPermission, setCameraPermission] = useState('initial');
-  const [isFaceDetected, setIsFaceDetected] = useState(false);
-  const [canStartInterview, setCanStartInterview] = useState(false);
-  const [isLoadingModels, setIsLoadingModels] = useState(true);
-  const [modelLoadError, setModelLoadError] = useState(null);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const mediaStreamRef = useRef(null);
-
-  // Permission Modal
-  const { 
-    isOpen: isPermissionModalOpen, 
-    onOpen: openPermissionModal, 
-    onClose: closePermissionModal 
-  } = useDisclosure();
-
-  // Custom model loading function with multiple fallback URLs
-  const loadFaceDetectionModels = async () => {
-    const modelUrls = [
-      '/models',  // Local public directory
-      'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights', // GitHub CDN
-      'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights' // JSDelivr CDN
-    ];
-
-    const modelFiles = [
-      'tiny_face_detector.bin',
-      'tiny_face_detector.json',
-      'face_landmark_68_model.bin',
-      'face_landmark_68_model.json',
-      'face_recognition_model.bin',
-      'face_recognition_model.json'
-    ];
-
-    setIsLoadingModels(true);
-    setModelLoadError(null);
-
-    try {
-      // Try loading from each URL
-      for (const baseUrl of modelUrls) {
-        try {
-          await Promise.all([
-            faceapi.nets.tinyFaceDetector.loadFromUri(baseUrl),
-            faceapi.nets.faceLandmark68Net.loadFromUri(baseUrl),
-            faceapi.nets.faceRecognitionNet.loadFromUri(baseUrl)
-          ]);
-          
-          // If successful, break the loop
-          return true;
-        } catch (urlError) {
-          console.warn(`Failed to load models from ${baseUrl}:`, urlError);
-          continue;
-        }
-      }
-
-      // If all URLs fail
-      throw new Error('Could not load face detection models from any source');
-    } catch (error) {
-      console.error('Face detection model loading error:', error);
-      setModelLoadError(error.message);
-      
-      toast({
-        title: "Face Detection Setup Failed",
-        description: "Unable to load face detection models. Please check your internet connection.",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-
-      return false;
-    } finally {
-      setIsLoadingModels(false);
-    }
-  };
-
-  // Camera Permission and Detection Setup
-  useEffect(() => {
-    const initializeFaceDetection = async () => {
-      try {
-        // First, load models
-        const modelsLoaded = await loadFaceDetectionModels();
-        if (!modelsLoaded) {
-          return;
-        }
-
-        // Check camera devices
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        
-        if (videoDevices.length === 0) {
-          setCameraPermission('no-camera');
-          openPermissionModal();
-          return;
-        }
-
-        // Attempt to get media stream
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: true,
-          audio: false 
-        });
-
-        // If successful, set up video and start detection
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          mediaStreamRef.current = stream;
-          setCameraPermission('granted');
-
-          // Start periodic face detection
-          const intervalId = setInterval(detectFaces, 1000);
-          
-          // Cleanup function
-          return () => {
-            clearInterval(intervalId);
-            stream.getTracks().forEach(track => track.stop());
-          };
-        }
-      } catch (error) {
-        console.error('Camera permission error:', error);
-        
-        // Different handling based on error type
-        if (error.name === 'NotAllowedError') {
-          setCameraPermission('denied');
-          openPermissionModal();
-        } else if (error.name === 'NotFoundError') {
-          setCameraPermission('no-camera');
-          openPermissionModal();
-        } else {
-          setCameraPermission('error');
-          openPermissionModal();
-        }
-      }
-    };
-
-    initializeFaceDetection();
-  }, []);
-
-  const detectFaces = async () => {
-    if (videoRef.current && canvasRef.current) {
-      const detections = await faceapi.detectAllFaces(
-        videoRef.current, 
-        new faceapi.TinyFaceDetectorOptions()
-      ).withFaceLandmarks();
-
-      if (detections.length > 0) {
-        setIsFaceDetected(true);
-        setCanStartInterview(true);
-        
-        // Optional: Draw face landmarks
-        const displaySize = { width: videoRef.current.width, height: videoRef.current.height };
-        const resizedDetections = faceapi.resizeResults(detections, displaySize);
-        canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        faceapi.draw.drawDetections(canvasRef.current, resizedDetections);
-        faceapi.draw.drawFaceLandmarks(canvasRef.current, resizedDetections);
-      } else {
-        setIsFaceDetected(false);
-        setCanStartInterview(false);
-      }
-    }
-  };
-
-  const handlePermissionAction = (action) => {
-    switch (action) {
-      case 'retry':
-        // Attempt to get camera permission again
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then(() => {
-            setCameraPermission('granted');
-            closePermissionModal();
-          })
-          .catch(error => {
-            console.error('Permission retry failed:', error);
-            toast({
-              title: "Permission Denied",
-              description: "Camera access is required to start the interview.",
-              status: "error",
-              duration: 3000,
-              isClosable: true,
-            });
-          });
-        break;
-      case 'back':
-        // Navigate back to previous page
-        navigate(-1);
-        break;
-      default:
-        navigate(-1);
-    }
-    closePermissionModal();
-  };
-
-  const startInterview = () => {
-    if (canStartInterview && cameraPermission === 'granted') {
-      // Start screen recording automatically
-      startScreenRecording();
-      
-      setHasStarted(true);
-      toast({
-        title: "Interview Started!",
-        description: "Face verified. Recording started. Good luck!",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-    } else {
-      toast({
-        title: "Cannot Start Interview",
-        description: "Please ensure camera access and face is visible.",
-        status: "warning",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
+  const webcamRef = useRef(null);
+  const screenStreamRef = useRef(null);
+  const webcamStreamRef = useRef(null);
+  const combinedStreamRef = useRef(null);
 
   // AI Questions
   const questions = [
@@ -300,19 +72,219 @@ const AiHome = () => {
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
-  // Start interview toast only once
-  useEffect(() => {
-    if (!hasStarted) {
-      setHasStarted(true);
+  // Separate function to start webcam only
+  const startWebcam = async () => {
+    try {
+      setWebcamStatus('loading');
+      console.log('Starting webcam...');
+      
+      // Stop any existing webcam stream first
+      if (webcamStreamRef.current) {
+        webcamStreamRef.current.getTracks().forEach(track => track.stop());
+        webcamStreamRef.current = null;
+      }
+
+      // Clear the video element
+      if (webcamRef.current) {
+        webcamRef.current.srcObject = null;
+        webcamRef.current.load();
+      }
+
+      // Request webcam with simpler constraints first
+      const webcamStream = await navigator.mediaDevices.getUserMedia({ 
+        video: {
+          width: { ideal: 320, max: 640 },
+          height: { ideal: 240, max: 480 },
+          frameRate: { ideal: 15, max: 30 }
+        },
+        audio: false
+      });
+
+      console.log('Webcam stream obtained:', webcamStream);
+      console.log('Video tracks:', webcamStream.getVideoTracks());
+
+      // Check if video track is active
+      const videoTrack = webcamStream.getVideoTracks()[0];
+      if (videoTrack) {
+        console.log('Video track state:', videoTrack.readyState);
+        console.log('Video track settings:', videoTrack.getSettings());
+      }
+
+      // Store stream
+      webcamStreamRef.current = webcamStream;
+
+      // Set up webcam display with promise-based approach
+      if (webcamRef.current && webcamStream) {
+        console.log('Setting up webcam video element...');
+        
+        return new Promise((resolve, reject) => {
+          const video = webcamRef.current;
+          let timeoutId;
+          
+          const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            video.onloadedmetadata = null;
+            video.oncanplay = null;
+            video.oncanplaythrough = null;
+            video.onerror = null;
+          };
+          
+          const handleSuccess = () => {
+            console.log('Webcam setup successful');
+            cleanup();
+            setWebcamStatus('active');
+            resolve(webcamStream);
+          };
+          
+          const handleError = (error) => {
+            console.error('Webcam setup error:', error);
+            cleanup();
+            setWebcamStatus('error');
+            reject(error);
+          };
+          
+          // Set up event listeners
+          video.onloadedmetadata = () => {
+            console.log('Webcam metadata loaded');
+            console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+          };
+          
+          video.oncanplay = () => {
+            console.log('Webcam can play');
+            handleSuccess();
+          };
+          
+          video.oncanplaythrough = () => {
+            console.log('Webcam can play through');
+            handleSuccess();
+          };
+          
+          video.onerror = (e) => {
+            console.error('Webcam video error:', e);
+            handleError(e);
+          };
+          
+          // Set timeout as fallback
+          timeoutId = setTimeout(() => {
+            console.log('Webcam setup timeout - forcing success');
+            handleSuccess();
+          }, 3000);
+          
+          // Set the stream
+          video.srcObject = webcamStream;
+          
+          // Force play immediately
+          video.play().then(() => {
+            console.log('Video play() succeeded');
+            // Don't call handleSuccess here, let the events handle it
+          }).catch((playError) => {
+            console.error('Video play() failed:', playError);
+            // Try without autoplay
+            video.muted = true;
+            video.playsInline = true;
+            video.play().catch(() => {
+              console.log('Second play attempt failed, but continuing...');
+              // Don't fail completely, the video might still work
+            });
+          });
+        });
+      }
+
+      return webcamStream;
+    } catch (err) {
+      console.error("Webcam start error:", err);
+      setWebcamStatus('error');
+      
+      let errorMessage = "Failed to access webcam.";
+      if (err.name === 'NotAllowedError') {
+        errorMessage = "Camera permission denied. Please allow camera access and try again.";
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = "No camera found on this device.";
+      } else if (err.name === 'NotReadableError') {
+        errorMessage = "Camera is being used by another application. Please close other apps using the camera.";
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage = "Camera constraints not supported. Trying with basic settings...";
+        
+        // Retry with most basic constraints
+        try {
+          const basicStream = await navigator.mediaDevices.getUserMedia({ 
+            video: true,
+            audio: false
+          });
+          
+          webcamStreamRef.current = basicStream;
+          if (webcamRef.current) {
+            webcamRef.current.srcObject = basicStream;
+            await webcamRef.current.play();
+            setWebcamStatus('active');
+            return basicStream;
+          }
+        } catch (retryErr) {
+          console.error('Retry with basic constraints failed:', retryErr);
+        }
+      }
+      
       toast({
-        title: "Interview Started!",
-        description: "Recording is active...",
-        status: "success",
-        duration: 3000,
+        title: "Webcam Error",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
         isClosable: true,
       });
+      
+      throw err;
     }
-  }, [hasStarted, toast]);
+  };
+
+  // Auto start camera and screen recording when component mounts
+  useEffect(() => {
+    let isMounted = true;
+    
+    const autoStartRecording = async () => {
+      if (!isMounted || hasStarted || isScreenRecording) {
+        return;
+      }
+      
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (!isMounted) return;
+        
+        await startScreenRecording();
+        
+        if (isMounted) {
+          setHasStarted(true);
+          setIsRecording(true);
+          setIsTimerRunning(true);
+          
+          toast({
+            title: "Interview Started!",
+            description: "Camera and screen recording are active.",
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      } catch (error) {
+        console.error("Auto start failed:", error);
+        if (isMounted) {
+          toast({
+            title: "Setup Required",
+            description: "Please allow camera and screen sharing permissions to continue.",
+            status: "warning",
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+      }
+    };
+
+    autoStartRecording();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -327,6 +299,7 @@ const AiHome = () => {
           } else {
             setIsTimerRunning(false);
             setIsRecording(false);
+            stopScreenRecording();
             toast({
               title: "Time's up!",
               status: "warning",
@@ -341,22 +314,300 @@ const AiHome = () => {
     return () => clearInterval(interval);
   }, [isTimerRunning, timer, toast]);
 
-  const stopInterview = () => {
-    setIsRecording(false);
-    setIsTimerRunning(false);
-    toast({
-      title: "Interview Finished",
-      description: "Recording stopped.",
-      status: "info",
-      duration: 3000,
-      isClosable: true,
-    });
+  // Cleanup effect
+  useEffect(() => {
+    const cleanup = () => {
+      console.log('=== CLEANUP ON UNMOUNT ===');
+      
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('Cleanup: stopped screen track');
+        });
+        screenStreamRef.current = null;
+      }
+      
+      if (webcamStreamRef.current) {
+        webcamStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('Cleanup: stopped webcam track');
+        });
+        webcamStreamRef.current = null;
+      }
+      
+      if (combinedStreamRef.current) {
+        combinedStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+        });
+        combinedStreamRef.current = null;
+      }
+      
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+        console.log('Cleanup: stopped media recorder');
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      cleanup();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      cleanup();
+    };
+  }, []);
+
+  const startScreenRecording = async () => {
+    try {
+      if (isScreenRecording) {
+        console.log('Recording already in progress');
+        return;
+      }
+
+      console.log('Starting recording...');
+      
+      // Request screen sharing first
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+        video: { 
+          mediaSource: 'screen',
+          width: { ideal: 1920, max: 1920 },
+          height: { ideal: 1080, max: 1080 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
+      // Start webcam separately
+      const webcamStream = await startWebcam();
+
+      console.log('Both streams obtained');
+      screenStreamRef.current = screenStream;
+
+      // Create combined stream for recording
+      const combinedStream = new MediaStream();
+      
+      // Add video tracks
+      screenStream.getVideoTracks().forEach(track => {
+        combinedStream.addTrack(track);
+        console.log('Added screen video track');
+      });
+      
+      if (webcamStream) {
+        webcamStream.getVideoTracks().forEach(track => {
+          combinedStream.addTrack(track);
+          console.log('Added webcam video track');
+        });
+      }
+      
+      // Add only screen audio
+      screenStream.getAudioTracks().forEach(track => {
+        combinedStream.addTrack(track);
+        console.log('Added screen audio track');
+      });
+
+      combinedStreamRef.current = combinedStream;
+
+      // Handle screen share stop by user
+      const screenVideoTrack = screenStream.getVideoTracks()[0];
+      if (screenVideoTrack) {
+        screenVideoTrack.onended = () => {
+          console.log('Screen sharing ended by user - stopping recording');
+          stopScreenRecording();
+        };
+      }
+
+      // Set up media recorder
+      const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'video/webm';
+      }
+      
+      const mediaRecorder = new MediaRecorder(combinedStream, options);
+      mediaRecorderRef.current = mediaRecorder;
+      
+      const chunks = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+          console.log('Data chunk recorded:', e.data.size);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        console.log('MediaRecorder stopped');
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `interview_recording_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        
+        toast({
+          title: "Recording Saved",
+          description: "Your interview recording has been downloaded successfully.",
+          status: "success",
+          duration: 4000,
+          isClosable: true,
+        });
+      };
+      
+      mediaRecorder.onerror = (e) => {
+        console.error('MediaRecorder error:', e);
+      };
+      
+      mediaRecorder.start(1000);
+      setIsScreenRecording(true);
+      
+      console.log('Recording started successfully');
+      
+    } catch (err) {
+      console.error("Recording start error:", err);
+      
+      // Clean up any streams that were created
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('Stopped screen track on error');
+        });
+        screenStreamRef.current = null;
+      }
+      
+      if (webcamStreamRef.current) {
+        webcamStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('Stopped webcam track on error');
+        });
+        webcamStreamRef.current = null;
+      }
+      
+      let errorMessage = "Failed to start recording. Please try again.";
+      
+      if (err.name === 'NotAllowedError') {
+        errorMessage = "Permission denied. Please allow screen sharing and camera access.";
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = "Camera or screen not found.";
+      } else if (err.name === 'AbortError') {
+        errorMessage = "Recording setup was cancelled.";
+      } else if (err.name === 'NotSupportedError') {
+        errorMessage = "Recording not supported by this browser.";
+      }
+      
+      toast({
+        title: "Recording Failed",
+        description: errorMessage,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const stopScreenRecording = () => {
+    console.log('=== STOPPING SCREEN RECORDING ===');
+    
+    try {
+      if (mediaRecorderRef.current) {
+        const state = mediaRecorderRef.current.state;
+        console.log('MediaRecorder state:', state);
+        
+        if (state === 'recording') {
+          mediaRecorderRef.current.stop();
+          console.log('MediaRecorder stopped');
+        }
+        mediaRecorderRef.current = null;
+      }
+      
+      if (screenStreamRef.current) {
+        console.log('Stopping screen sharing tracks...');
+        screenStreamRef.current.getTracks().forEach((track, index) => {
+          console.log(`Stopping screen track ${index}:`, track.kind, track.readyState);
+          track.stop();
+          console.log(`Screen track ${index} stopped, new state:`, track.readyState);
+        });
+        screenStreamRef.current = null;
+        console.log('Screen stream cleared');
+      }
+      
+      if (webcamStreamRef.current) {
+        console.log('Stopping webcam tracks...');
+        webcamStreamRef.current.getTracks().forEach((track, index) => {
+          console.log(`Stopping webcam track ${index}:`, track.kind, track.readyState);
+          track.stop();
+          console.log(`Webcam track ${index} stopped, new state:`, track.readyState);
+        });
+        webcamStreamRef.current = null;
+        console.log('Webcam stream cleared');
+      }
+      
+      if (combinedStreamRef.current) {
+        console.log('Stopping combined stream tracks...');
+        combinedStreamRef.current.getTracks().forEach((track, index) => {
+          console.log(`Stopping combined track ${index}:`, track.kind, track.readyState);
+          track.stop();
+        });
+        combinedStreamRef.current = null;
+        console.log('Combined stream cleared');
+      }
+      
+      if (webcamRef.current) {
+        webcamRef.current.srcObject = null;
+        webcamRef.current.load();
+        console.log('Webcam video element cleared');
+      }
+      
+      setIsScreenRecording(false);
+      setIsRecording(false);
+      setIsTimerRunning(false);
+      setWebcamStatus('inactive');
+      
+      console.log('=== ALL RECORDING STOPPED ===');
+      
+      toast({
+        title: "Interview Finished",
+        description: "Recording stopped. Camera and screen sharing permissions revoked.",
+        status: "success",
+        duration: 4000,
+        isClosable: true,
+      });
+      
+    } catch (error) {
+      console.error('Error stopping recording:', error);
+      
+      setIsScreenRecording(false);
+      setIsRecording(false);
+      setIsTimerRunning(false);
+      setWebcamStatus('error');
+      
+      if (webcamRef.current) {
+        webcamRef.current.srcObject = null;
+      }
+      
+      toast({
+        title: "Recording Stopped",
+        description: "Recording ended with some cleanup issues. Please refresh if needed.",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   const skipQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setVoiceText(""); // clear response
+      setVoiceText("");
     } else {
       toast({
         title: "Interview Completed!",
@@ -365,7 +616,7 @@ const AiHome = () => {
         duration: 3000,
         isClosable: true,
       });
-      stopInterview();
+      stopScreenRecording();
     }
   };
 
@@ -379,497 +630,377 @@ const AiHome = () => {
     return ((totalSeconds - currentSeconds) / totalSeconds) * 100;
   };
 
-  const startScreenRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ 
-        video: { mediaSource: 'screen' },
-        audio: true 
-      });
-      
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm'
-      });
-      
-      mediaRecorderRef.current = mediaRecorder;
-      const chunks = [];
-      
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunks.push(e.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        setRecordedChunks(chunks);
-        
-        // Optional: Download or save the recording
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `interview_recording_${new Date().toISOString()}.webm`;
-        a.click();
-      };
-      
-      mediaRecorder.start();
-      setIsScreenRecording(true);
-      
-      toast({
-        title: "Screen Recording Started",
-        description: "Your screen is now being recorded.",
-        status: "info",
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (err) {
-      console.error("Error starting screen recording:", err);
-      toast({
-        title: "Recording Failed",
-        description: err.message,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const stopScreenRecording = () => {
-    if (mediaRecorderRef.current && isScreenRecording) {
-      mediaRecorderRef.current.stop();
-      setIsScreenRecording(false);
-      
-      toast({
-        title: "Screen Recording Stopped",
-        description: "Your screen recording has been saved.",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const takeScreenshot = () => {
-    if (screenRef.current) {
-      html2canvas(screenRef.current).then(canvas => {
-        const screenshotDataUrl = canvas.toDataURL('image/png');
-        setScreenshotUrl(screenshotDataUrl);
-        setIsScreenshotModalOpen(true);
-        
-        // Optional: Download screenshot
-        const a = document.createElement('a');
-        a.href = screenshotDataUrl;
-        a.download = `interview_screenshot_${new Date().toISOString()}.png`;
-        a.click();
-        
-        toast({
-          title: "Screenshot Captured",
-          description: "Your screenshot has been saved.",
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-      });
-    }
-  };
-
   return (
-    <Box minH="100vh" bg={bgColor} p={4} ref={screenRef}>
+    <Box minH="100vh" bg={bgColor} p={4} position="relative">
       <Container maxW="7xl">
-        {/* Loading Overlay */}
-        {isLoadingModels && (
-          <Center 
-            position="fixed" 
-            top={0} 
-            left={0} 
-            right={0} 
-            bottom={0} 
-            bg="rgba(0,0,0,0.8)" 
-            zIndex={1000} 
-            flexDirection="column"
-          >
-            <VStack spacing={6} align="center">
-              <Spinner 
-                size="xl" 
-                color="blue.500" 
-                thickness="4px" 
-                speed="0.65s" 
-              />
-              <Heading color="white" size="xl">
-                Preparing Interview Environment
-              </Heading>
-              <Text color="gray.300" textAlign="center">
-                Loading face detection models. This may take a moment...
-              </Text>
-            </VStack>
-          </Center>
-        )}
-
-        {/* Model Load Error Handling */}
-        {modelLoadError && (
-          <Center 
-            position="fixed" 
-            top={0} 
-            left={0} 
-            right={0} 
-            bottom={0} 
-            bg="rgba(0,0,0,0.8)" 
-            zIndex={1000} 
-            flexDirection="column"
-          >
-            <VStack spacing={6} align="center" p={6} bg="red.600" borderRadius="md">
-              <FaExclamationTriangle size="64px" color="white" />
-              <Heading color="white" size="xl" textAlign="center">
-                Face Detection Setup Failed
-              </Heading>
-              <Text color="white" textAlign="center">
-                {modelLoadError}
-              </Text>
-              <HStack spacing={4}>
-                <Button 
-                  colorScheme="whiteAlpha" 
-                  onClick={() => window.location.reload()}
-                >
-                  Retry
-                </Button>
-                <Button 
-                  colorScheme="whiteAlpha" 
-                  variant="outline"
-                  onClick={() => navigate(-1)}
-                >
-                  Go Back
-                </Button>
+        {/* Header */}
+        <Flex justify="space-between" align="center" mb={6}>
+          <HStack>
+            <IconButton
+              icon={<FaHome />}
+              variant="ghost"
+              size="lg"
+              aria-label="Home"
+              onClick={() => navigate('/')}
+            />
+            <Heading size="lg" color="blue.500">
+              AI Interview Assistant
+            </Heading>
+          </HStack>
+          
+          <HStack spacing={3}>
+            <Badge colorScheme={isTimerRunning ? 'green' : 'gray'} p={2} borderRadius="md">
+              <HStack>
+                <FaClock />
+                <Text fontWeight="bold">{formatTime(timer.minutes, timer.seconds)}</Text>
               </HStack>
-            </VStack>
-          </Center>
-        )}
+            </Badge>
+          </HStack>
+        </Flex>
 
-        {/* Rest of the existing content remains the same */}
-        {!isLoadingModels && !modelLoadError && (
-          <>
-            {/* Face Detection and Interview Start Screen */}
-            {!hasStarted && (
-              <Center 
-                position="fixed" 
-                top={0} 
-                left={0} 
-                right={0} 
-                bottom={0} 
-                bg="rgba(0,0,0,0.8)" 
-                zIndex={1000} 
-                flexDirection="column"
+        {/* Timer Progress */}
+        <Box mb={4}>
+          <Progress 
+            value={getTimerProgress()} 
+            colorScheme={timer.minutes < 5 ? 'red' : 'blue'} 
+            size="sm" 
+            borderRadius="md"
+          />
+        </Box>
+
+        <Grid templateColumns={{ base: '1fr', lg: '1fr 300px' }} gap={6}>
+          {/* Main Content */}
+          <GridItem>
+            <VStack spacing={6} align="stretch">
+              {/* AI Speaking Box */}
+              <Box 
+                bg={cardBg} 
+                borderColor={borderColor}
+                borderRadius="md"
+                p={4}
+                border="2px dashed"
               >
-                <VStack spacing={6} align="center">
-                  <Heading color="white" size="xl">
-                    AI Interview Verification
-                  </Heading>
-                  
-                  {/* Video and Canvas for Face Detection */}
-                  <Box position="relative" width="400px" height="300px">
-                    <video 
-                      ref={videoRef} 
-                      autoPlay 
-                      muted 
-                      width={400} 
-                      height={300} 
-                      onPlay={() => {
-                        const intervalId = setInterval(async () => {
-                          await detectFaces();
-                        }, 1000);
-                        return () => clearInterval(intervalId);
-                      }}
-                    />
-                    <canvas 
-                      ref={canvasRef} 
-                      style={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        left: 0, 
-                        width: '100%', 
-                        height: '100%' 
-                      }} 
-                    />
-                  </Box>
-                  
-                  {/* Face Detection Status */}
-                  <VStack spacing={4}>
-                    <Badge 
-                      colorScheme={isFaceDetected ? "green" : "red"}
-                      fontSize="md"
-                      p={2}
-                    >
-                      {isFaceDetected ? "Face Detected" : "No Face Detected"}
-                    </Badge>
-                    
-                    <Button 
-                      colorScheme="blue" 
-                      size="lg" 
-                      leftIcon={<FaPlay />}
-                      onClick={startInterview}
-                      isDisabled={!canStartInterview}
-                    >
-                      Start Interview
-                    </Button>
-                  </VStack>
-                </VStack>
-              </Center>
-            )}
+                <Text fontWeight="bold" color="blue.500" mb={2}>AI Interviewer says:</Text>
+                <Text fontSize="lg">{questions[currentQuestionIndex]}</Text>
+              </Box>
 
-            {/* Existing interview content */}
-            {hasStarted && (
-              <>
-                {/* Existing header and content */}
-                <Flex justify="space-between" align="center" mb={6}>
-                  <HStack>
-                    <IconButton
-                      icon={<FaHome />}
-                      variant="ghost"
-                      size="lg"
-                      aria-label="Home"
-                    />
-                    <Heading size="lg" color="blue.500">
-                      AI Interview Assistant
-                    </Heading>
-                  </HStack>
-                  
-                  <HStack spacing={3}>
-                    <Badge colorScheme={isTimerRunning ? 'green' : 'gray'} p={2} borderRadius="md">
-                      <HStack>
-                        <FaClock />
-                        <Text fontWeight="bold">{formatTime(timer.minutes, timer.seconds)}</Text>
-                      </HStack>
-                    </Badge>
-                  </HStack>
-                </Flex>
+              {/* Code Editor */}
+              <CodeEditor
+                code={code}
+                setCode={setCode}
+                selectedLanguage={selectedLanguage}
+                setSelectedLanguage={setSelectedLanguage}
+                onRun={() => {
+                  console.log('Run code:', code);
+                  toast({
+                    title: "Code Executed",
+                    description: "Check console for output",
+                    status: "info",
+                    duration: 2000,
+                  });
+                }}
+              />
 
-                {/* Timer Progress */}
-                <Box mb={4}>
-                  <Progress 
-                    value={getTimerProgress()} 
-                    colorScheme={timer.minutes < 5 ? 'red' : 'blue'} 
-                    size="sm" 
-                    borderRadius="md"
-                  />
-                </Box>
-
-                <Grid templateColumns={{ base: '1fr', lg: '1fr 300px' }} gap={6}>
-                  {/* Main Content */}
-                  <GridItem>
-                    <VStack spacing={6} align="stretch">
-                      {/* AI Speaking Box */}
-                      <Box 
-                        bg={cardBg} 
-                        borderColor={borderColor}
-                        borderRadius="md"
-                        p={4}
-                        border="2px dashed"
-                      >
-                        <Text fontWeight="bold" color="blue.500" mb={2}>AI Interviewer says:</Text>
-                        <Text>{questions[currentQuestionIndex]}</Text>
-                      </Box>
-
-                      {/* Code Editor */}
-                      <CodeEditor
-                        code={code}
-                        setCode={setCode}
-                        selectedLanguage={selectedLanguage}
-                        setSelectedLanguage={setSelectedLanguage}
-                        onRun={() => {
-                          // safe placeholder: console.log the code
-                          console.log('Run code:', code);
-                        }}
-                      />
-
-                      {/* User Response */}
-                      <Box 
-                        bg={cardBg} 
-                        borderColor={borderColor}
-                        borderRadius="md"
-                        p={4}
-                      >
-                        <Heading size="md">Your Response</Heading>
-                        <Textarea
-                          placeholder="Your voice will be transcribed here, or you can type your response..."
-                          value={voiceText}
-                          onChange={(e) => setVoiceText(e.target.value)}
-                          minH="120px"
-                          resize="vertical"
-                        />
-                        <HStack mt={3} spacing={3}>
-                          <Button colorScheme="blue" size="sm">
-                            Send Response
-                          </Button>
-                          <Button 
-                            leftIcon={<FaForward />} 
-                            colorScheme="orange" 
-                            size="sm" 
-                            onClick={skipQuestion}
-                          >
-                            Skip Question
-                          </Button>
-                        </HStack>
-                      </Box>
-                    </VStack>
-                  </GridItem>
-
-                  {/* Sidebar */}
-                  <GridItem>
-                    <VStack spacing={4} align="stretch">
-                      {/* AI Interviewer Profile */}
-                      <Box 
-                        bg={cardBg} 
-                        borderColor={borderColor}
-                        borderRadius="md"
-                        p={4}
-                        textAlign="center"
-                      >
-                        <Avatar size="xl" name="AI Interviewer" mb={3} />
-                        <Heading size="md">AI Interviewer</Heading>
-                        <Text fontSize="sm" color="gray.500">Technical Specialist</Text>
-                      </Box>
-
-                      {/* Controls */}
-                      <Box 
-                        bg={cardBg} 
-                        borderColor={borderColor}
-                        borderRadius="md"
-                        p={4}
-                      >
-                        <Heading size="md" mb={3}>Controls</Heading>
-                        <VStack spacing={3}>
-                          <Tooltip label="Use microphone to speak">
-                            <IconButton
-                              icon={<FaMicrophone />}
-                              colorScheme="blue"
-                              aria-label="Speak"
-                              onClick={() => setVoiceText("This is my spoken response...")}
-                            />
-                          </Tooltip>
-                          
-                          {/* Screen Recording Controls */}
-                          <Tooltip label={isScreenRecording ? "Stop Screen Recording" : "Start Screen Recording"}>
-                            <Button
-                              colorScheme={isScreenRecording ? "red" : "green"}
-                              w="full"
-                              leftIcon={isScreenRecording ? <FaStop /> : <FaRecordVinyl />}
-                              onClick={isScreenRecording ? stopScreenRecording : startScreenRecording}
-                            >
-                              {isScreenRecording ? "Stop Recording" : "Start Recording"}
-                            </Button>
-                          </Tooltip>
-                          
-                          {/* Screenshot Button */}
-                          <Tooltip label="Take Screenshot">
-                            <Button
-                              colorScheme="blue"
-                              w="full"
-                              leftIcon={<FaCamera />}
-                              onClick={takeScreenshot}
-                            >
-                              Take Screenshot
-                            </Button>
-                          </Tooltip>
-                          
-                          {/* Finish Interview */}
-                          <Tooltip label="Finish Interview">
-                            <Button
-                              colorScheme="red"
-                              w="full"
-                              leftIcon={<FaStop />}
-                              onClick={stopInterview}
-                              isDisabled={!isRecording}
-                            >
-                              Stop Recording
-                            </Button>
-                          </Tooltip>
-                        </VStack>
-                      </Box>
-
-                      {/* Interview Stats */}
-                      <Box 
-                        bg={cardBg} 
-                        borderColor={borderColor}
-                        borderRadius="md"
-                        p={4}
-                      >
-                        <HStack>
-                          <FaChartLine />
-                          <Heading size="md">Session Stats</Heading>
-                        </HStack>
-                        <VStack align="stretch" spacing={3} mt={2}>
-                          <Flex justify="space-between">
-                            <Text fontSize="sm" color="gray.500">Questions:</Text>
-                            <Badge>{currentQuestionIndex + 1}/{questions.length}</Badge>
-                          </Flex>
-                          <Flex justify="space-between">
-                            <Text fontSize="sm" color="gray.500">Mode:</Text>
-                            <Badge colorScheme="blue">{interviewMode}</Badge>
-                          </Flex>
-                          <Flex justify="space-between">
-                            <Text fontSize="sm" color="gray.500">Status:</Text>
-                            <Badge colorScheme={isRecording ? "green" : "gray"}>
-                              {isRecording ? "Recording" : "Stopped"}
-                            </Badge>
-                          </Flex>
-                        </VStack>
-                      </Box>
-                    </VStack>
-                  </GridItem>
-                </Grid>
-              </>
-            )}
-
-            {/* Screenshot Modal */}
-            <Modal isOpen={isScreenshotModalOpen} onClose={() => setIsScreenshotModalOpen(false)} size="4xl">
-              <ModalOverlay />
-              <ModalContent>
-                <ModalHeader>Captured Screenshot</ModalHeader>
-                <ModalCloseButton />
-                <ModalBody>
-                  {screenshotUrl && (
-                    <img 
-                      src={screenshotUrl} 
-                      alt="Captured Screenshot" 
-                      style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} 
-                    />
-                  )}
-                </ModalBody>
-                <ModalFooter>
-                  <Button colorScheme="blue" mr={3} onClick={() => setIsScreenshotModalOpen(false)}>
-                    Close
+              {/* User Response */}
+              <Box 
+                bg={cardBg} 
+                borderColor={borderColor}
+                borderRadius="md"
+                p={4}
+              >
+                <Heading size="md" mb={3}>Your Response</Heading>
+                <Textarea
+                  placeholder="Type your response here or use the microphone..."
+                  value={voiceText}
+                  onChange={(e) => setVoiceText(e.target.value)}
+                  minH="120px"
+                  resize="vertical"
+                />
+                <HStack mt={3} spacing={3}>
+                  <Button colorScheme="blue" size="sm">
+                    Send Response
                   </Button>
-                </ModalFooter>
-              </ModalContent>
-            </Modal>
+                  <Button 
+                    leftIcon={<FaForward />} 
+                    colorScheme="orange" 
+                    size="sm" 
+                    onClick={skipQuestion}
+                  >
+                    Skip Question
+                  </Button>
+                </HStack>
+              </Box>
+            </VStack>
+          </GridItem>
 
-            {/* Permission Modal */}
-            <Modal isOpen={isPermissionModalOpen} onClose={closePermissionModal} isCentered>
-              <ModalOverlay />
-              <ModalContent>
-                <ModalHeader>Camera Access Required</ModalHeader>
-                <ModalCloseButton />
-                <ModalBody>
-                  <VStack spacing={4}>
-                    <Text>
-                      {cameraPermission === 'no-camera' && "No camera device found on your system."}
-                      {cameraPermission === 'denied' && "Camera access has been denied. Please enable it in your browser settings."}
-                      {cameraPermission === 'error' && "An error occurred while accessing the camera."}
-                      {cameraPermission === 'initial' && "Please allow camera access to start the interview."}
-                    </Text>
-                    <HStack spacing={3}>
-                      <Button colorScheme="blue" onClick={() => handlePermissionAction('retry')}>
-                        Retry
+          {/* Sidebar */}
+          <GridItem>
+            <VStack spacing={4} align="stretch">
+              {/* AI Interviewer Profile */}
+              <Box 
+                bg={cardBg} 
+                borderColor={borderColor}
+                borderRadius="md"
+                p={4}
+                textAlign="center"
+              >
+                <Avatar size="xl" name="AI Interviewer" mb={3} />
+                <Heading size="md">AI Interviewer</Heading>
+                <Text fontSize="sm" color="gray.500">Technical Specialist</Text>
+              </Box>
+
+              {/* Controls */}
+              <Box 
+                bg={cardBg} 
+                borderColor={borderColor}
+                borderRadius="md"
+                p={4}
+              >
+                <Heading size="md" mb={3}>Controls</Heading>
+                <VStack spacing={3}>
+                  <Tooltip label="Use microphone to speak">
+                    <IconButton
+                      icon={<FaMicrophone />}
+                      colorScheme="blue"
+                      aria-label="Speak"
+                      w="full"
+                      onClick={() => setVoiceText("Voice input captured...")}
+                    />
+                  </Tooltip>
+                  
+                  {/* Webcam Test Button */}
+                  <Tooltip label="Test webcam separately">
+                    <Button
+                      colorScheme="purple"
+                      w="full"
+                      leftIcon={<FaCamera />}
+                      onClick={() => {
+                        setWebcamStatus('loading');
+                        startWebcam().catch(err => {
+                          console.error('Manual webcam test failed:', err);
+                          setWebcamStatus('error');
+                        });
+                      }}
+                      isLoading={webcamStatus === 'loading'}
+                      loadingText="Starting..."
+                      size="sm"
+                    >
+                      {webcamStatus === 'error' ? 'Retry Webcam' : 'Test Webcam'}
+                    </Button>
+                  </Tooltip>
+                  
+                  {/* Force Refresh Webcam */}
+                  {webcamStatus === 'loading' && (
+                    <Tooltip label="Force refresh if stuck on loading">
+                      <Button
+                        colorScheme="yellow"
+                        w="full"
+                        leftIcon={<FaCamera />}
+                        onClick={() => {
+                          // Force stop everything and restart
+                          if (webcamStreamRef.current) {
+                            webcamStreamRef.current.getTracks().forEach(track => track.stop());
+                            webcamStreamRef.current = null;
+                          }
+                          if (webcamRef.current) {
+                            webcamRef.current.srcObject = null;
+                            webcamRef.current.load();
+                          }
+                          setWebcamStatus('inactive');
+                          
+                          // Restart after a delay
+                          setTimeout(() => {
+                            startWebcam().catch(err => {
+                              console.error('Force refresh failed:', err);
+                              setWebcamStatus('error');
+                            });
+                          }, 1000);
+                        }}
+                        size="sm"
+                      >
+                        Force Refresh
                       </Button>
-                      <Button colorScheme="gray" onClick={() => handlePermissionAction('back')}>
-                        Back
+                    </Tooltip>
+                  )}
+                  
+                  <Tooltip label="Stop Interview and End Recording">
+                    <Button
+                      colorScheme="red"
+                      w="full"
+                      leftIcon={<FaStop />}
+                      onClick={stopScreenRecording}
+                      isDisabled={!isScreenRecording}
+                      size="lg"
+                    >
+                      Stop Recording
+                    </Button>
+                  </Tooltip>
+
+                  {!isScreenRecording && (
+                    <Tooltip label="Restart Recording (New permissions will be requested)">
+                      <Button
+                        colorScheme="green"
+                        w="full"
+                        leftIcon={<FaRecordVinyl />}
+                        onClick={() => {
+                          setHasStarted(false);
+                          startScreenRecording().then(() => {
+                            setHasStarted(true);
+                            setIsRecording(true);
+                            setIsTimerRunning(true);
+                          });
+                        }}
+                        size="lg"
+                      >
+                        Restart Recording
                       </Button>
-                    </HStack>
-                  </VStack>
-                </ModalBody>
-              </ModalContent>
-            </Modal>
-          </>
-        )}
+                    </Tooltip>
+                  )}
+                </VStack>
+              </Box>
+
+              {/* Interview Stats */}
+              <Box 
+                bg={cardBg} 
+                borderColor={borderColor}
+                borderRadius="md"
+                p={4}
+              >
+                <HStack>
+                  <FaChartLine />
+                  <Heading size="md">Session Stats</Heading>
+                </HStack>
+                <VStack align="stretch" spacing={3} mt={2}>
+                  <Flex justify="space-between">
+                    <Text fontSize="sm" color="gray.500">Questions:</Text>
+                    <Badge>{currentQuestionIndex + 1}/{questions.length}</Badge>
+                  </Flex>
+                  <Flex justify="space-between">
+                    <Text fontSize="sm" color="gray.500">Mode:</Text>
+                    <Badge colorScheme="blue">{interviewMode}</Badge>
+                  </Flex>
+                  <Flex justify="space-between">
+                    <Text fontSize="sm" color="gray.500">Status:</Text>
+                    <Badge colorScheme={isRecording ? "green" : "gray"}>
+                      {isRecording ? "Recording" : "Stopped"}
+                    </Badge>
+                  </Flex>
+                  <Flex justify="space-between">
+                    <Text fontSize="sm" color="gray.500">Camera:</Text>
+                    <Badge colorScheme={
+                      webcamStatus === 'active' ? 'green' : 
+                      webcamStatus === 'loading' ? 'yellow' : 
+                      webcamStatus === 'error' ? 'red' : 'gray'
+                    }>
+                      {webcamStatus === 'active' ? 'Active' : 
+                       webcamStatus === 'loading' ? 'Loading' : 
+                       webcamStatus === 'error' ? 'Error' : 'Inactive'}
+                    </Badge>
+                  </Flex>
+                </VStack>
+              </Box>
+            </VStack>
+          </GridItem>
+        </Grid>
       </Container>
+
+      {/* Webcam Display - Top Right Corner */}
+      {(isScreenRecording || webcamStatus === 'active') && (
+        <Box 
+          position="fixed" 
+          top="20px" 
+          right="20px" 
+          width="200px" 
+          height="150px" 
+          zIndex={1000} 
+          borderRadius="md" 
+          overflow="hidden"
+          boxShadow="lg"
+          border="3px solid"
+          borderColor={
+            webcamStatus === 'active' ? 'green.500' : 
+            webcamStatus === 'loading' ? 'yellow.500' : 
+            webcamStatus === 'error' ? 'red.500' : 'blue.500'
+          }
+          bg="black"
+        >
+          {webcamStatus === 'loading' && (
+            <Flex justify="center" align="center" h="100%" color="white">
+              <Text>Loading...</Text>
+            </Flex>
+          )}
+          
+          {webcamStatus === 'error' && (
+            <Flex justify="center" align="center" h="100%" color="white" direction="column">
+              <FaCamera size={24} />
+              <Text fontSize="xs" mt={2}>Camera Error</Text>
+            </Flex>
+          )}
+          
+          <video 
+            ref={webcamRef} 
+            autoPlay
+            playsInline
+            muted
+            controls={false}
+            width="200"
+            height="150"
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover',
+              transform: 'scaleX(-1)',
+              backgroundColor: '#000',
+              display: webcamStatus === 'active' ? 'block' : 'none'
+            }}
+            onLoadedData={() => {
+              console.log('Video loaded data event');
+              if (webcamStatus === 'loading') {
+                setWebcamStatus('active');
+              }
+            }}
+            onPlaying={() => {
+              console.log('Video playing event');
+              setWebcamStatus('active');
+            }}
+          />
+          
+          {/* Recording Indicator */}
+          {isScreenRecording && (
+            <Box
+              position="absolute"
+              top="5px"
+              left="5px"
+              bg="red.500"
+              color="white"
+              px={2}
+              py={1}
+              borderRadius="sm"
+              fontSize="xs"
+              fontWeight="bold"
+            >
+              ● REC
+            </Box>
+          )}
+          
+          {/* Status Indicator */}
+          <Box
+            position="absolute"
+            bottom="5px"
+            left="5px"
+            bg="rgba(0,0,0,0.7)"
+            color="white"
+            px={2}
+            py={1}
+            borderRadius="sm"
+            fontSize="xs"
+          >
+            {webcamStatus === 'active' ? 'LIVE' : 
+             webcamStatus === 'loading' ? 'LOADING' : 
+             webcamStatus === 'error' ? 'ERROR' : 'OFF'}
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 };
