@@ -16,7 +16,6 @@ function App() {
       <Navbar />
       {/* Define routes here */}
       <Routes>
-
         <Route path="/" element={<Home />} />
         <Route path="/ai" element={<AiHome />} />
         <Route path="/MyJobs" element={<MyJobs />} />
