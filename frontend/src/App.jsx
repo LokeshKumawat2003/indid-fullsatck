@@ -8,8 +8,13 @@ import Salaryguide from "./pages/Salaryguide";
 import AuthPage from "./pages/AuthPage";
 import MyJobs from "./pages/MyJobs";
 import AiHome from "./pages/AiInterview/AiHome";
+import { useEffect } from "react";
 
 function App() {
+
+
+
+
   return (
     <>
       {/* Navbar stays visible on all pages */}

@@ -6,12 +6,11 @@ const morgan = require('morgan');
 const connectDB = require('./config/Db');
 const errorHandler = require('./Middleware/errorHandler');
 
+const ai = require('./controllers/aiinerview');
 const PORT = process.env.PORT || 5000;
 
-// ----- Express App Setup -----
 const app = express();
 
-// Security & parsing middlewares
 app.use(cors());
 app.use(helmet());
 app.use(helmet.contentSecurityPolicy({
@@ -19,20 +18,18 @@ app.use(helmet.contentSecurityPolicy({
     defaultSrc: ["'self'"]
   }
 }));
-app.use(express.json({ limit: '10kb' })); // Prevent huge payloads
-app.use(morgan('dev')); // Logging
+app.use(express.json({ limit: '10kb' }));
+app.use(morgan('dev'));
 
-// ----- Test Route -----
 app.get('/', (req, res) => {
-  res.json({ 
-    message: "Server is running"
-  });
+  res.json({ message: "Server is running" });
 });
 
-// ----- Error Handling Middleware -----
+
+app.use("/api",ai)
+
 app.use(errorHandler);
 
-// ----- Start Server After DB Connection -----
 connectDB()
   .then(() => {
     app.listen(PORT, () => {
@@ -41,5 +38,7 @@ connectDB()
   })
   .catch(err => {
     console.error('Failed to connect to database:', err);
-    process.exit(1); // Stop server if DB connection fails
+    process.exit(1);
   });
+
+module.exports = app;

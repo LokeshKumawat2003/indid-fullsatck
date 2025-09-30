@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -50,6 +50,10 @@ const AiHome = () => {
   const [hasStarted, setHasStarted] = useState(false);
   const [code, setCode] = useState('// Write your code here');
 
+  // Add state for session management and conversation history
+  const [sessionId, setSessionId] = useState(null);
+  const [conversationHistory, setConversationHistory] = useState([]);
+
   // Screen Recording States
   const [isScreenRecording, setIsScreenRecording] = useState(false);
   const [webcamStatus, setWebcamStatus] = useState('inactive'); // 'inactive', 'loading', 'active', 'error'
@@ -60,15 +64,9 @@ const AiHome = () => {
   const combinedStreamRef = useRef(null);
   const forceRefreshTimeoutRef = useRef(null);
 
-  // AI Questions
-  const questions = [
-    "Welcome to the interview! Please introduce yourself.",
-    "What are the key differences between JavaScript and TypeScript?",
-    "Solve this DSA problem: Find the longest substring without repeating characters.",
-    "Explain the concept of closures in JavaScript.",
-    "How would you optimize the performance of a React application?"
-  ];
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  // AI Interview states
+  const [interviewStage, setInterviewStage] = useState('introduction'); // e.g., 'introduction', 'education', 'project_experience', 'wrap_up'
+  const [aiQuestion, setAiQuestion] = useState(""); // To store the dynamic question from AI
 
   // Add voice synthesis functionality
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -81,8 +79,99 @@ const AiHome = () => {
   // Add a ref to track the auto-send timeout
   const autoSendTimeoutRef = useRef(null);
 
+  // Add a ref to track the last spoken AI question
+  const lastSpokenQuestionRef = useRef("");
+
+  // Function to speak the AI's question
+  const speakAiQuestion = useCallback(() => {
+    if ('speechSynthesis' in window && aiQuestion) { // Ensure aiQuestion is not empty
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(aiQuestion);
+      utterance.rate = 0.9; 
+      utterance.pitch = 1; 
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+    } else if (aiQuestion) { // Fallback for browsers that don't support speech synthesis
+      toast({
+        title: "Voice Not Supported",
+        description: "Your browser does not support text-to-speech.",
+        status: "warning",
+        duration: 3000,
+      });
+    }
+  }, [aiQuestion, setIsSpeaking, toast]);
+
+  const skipQuestion = async () => {
+    toast({
+      title: "Skipping Question",
+      description: "Moving to the next question.",
+      status: "info",
+      duration: 2000,
+    });
+    // Send a special prompt to the backend to indicate skipping
+    const aiReply = await handleChatResponse("SKIP_CURRENT_QUESTION");
+
+    if (aiReply) {
+      setConversationHistory(prevHistory => [
+        ...prevHistory,
+        { role: "user", text: "Skipped current question.", timestamp: new Date() },
+        { role: "ai", text: aiReply, timestamp: new Date() },
+      ]);
+    }
+  };
+
+  const handleChatResponse = async (promptText) => {
+    try {
+      // Calculate the number of AI questions asked so far
+      const questionCount = conversationHistory.filter(msg => msg.role === 'ai' && msg.text.includes("?")).length;
+
+      const res = await fetch("http://localhost:5000/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: promptText,
+          sessionId: sessionId, // Send current sessionId
+          userId: "60d5ec49f8c7b8001f8e4d3a", // Placeholder userId, replace with actual user ID
+          interviewStage: interviewStage, // Send current interview stage
+          conversationHistory: conversationHistory, // Send full conversation history
+          questionCount: questionCount, // Send the current question count
+        }),
+      });
+
+      const data = await res.json();
+
+      // console.log(data.response.content[0].text);
+      if (data.success && data.response && data.response.content && data.response.content.length > 0) {
+        // Update sessionId if a new one is returned
+        if (data.sessionId && data.sessionId !== sessionId) {
+          setSessionId(data.sessionId);
+        }
+
+        const aiResponseContent = data.response.content[0].text; // Get the raw AI response
+
+        // The AI's response might contain both feedback and the next question
+        // We'll need to parse this. For now, we'll assume the AI's response is the next question if it starts with a question mark, otherwise it's feedback.
+        // A more robust solution might involve the AI structuring its response (e.g., JSON output).
+
+        // Heuristic: only set aiQuestion if the response ends with a question mark, indicating it's a question
+        if (aiResponseContent.trim().endsWith('?')) {
+          setAiQuestion(aiResponseContent); // Set the AI's response as the next question
+        }
+
+        return aiResponseContent; // Return the AI's reply
+      } else {
+        console.error("Unexpected response format:", data);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching chat:", error);
+      return null;
+    }
+  };
+
   // Function to send response with voice input
-  const sendVoiceResponse = (transcript) => {
+  const sendVoiceResponse = async (transcript) => {
     // If no transcript is provided, use the current voiceText
     const responseText = transcript || voiceText;
 
@@ -95,26 +184,34 @@ const AiHome = () => {
         duration: 2000,
       });
 
-      // Optional: You might want to add logic to send the response to backend
-      // For example:
-      // sendResponseToBackend(responseText);
+      // Call the chat response handler
+      const aiReply = await handleChatResponse(responseText);
+
+      if (aiReply) {
+        setConversationHistory(prevHistory => [
+          ...prevHistory,
+          { role: "user", text: responseText, timestamp: new Date() },
+          { role: "ai", text: aiReply, timestamp: new Date() },
+        ]);
+      }
 
       // Reset voice text and move to next question
       setVoiceText('');
       setLiveTranscript('');
 
-      // Move to next question or end interview logic
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(prevIndex => prevIndex + 1);
-      } else {
-        // End of interview
-        toast({
-          title: "Interview Completed",
-          description: "You've answered all questions.",
-          status: "info",
-          duration: 3000,
-        });
-      }
+      // The AI is now responsible for progressing the interview
+      // No longer need to manually increment currentQuestionIndex
+      // if (currentQuestionIndex < questions.length - 1) {
+      //   setCurrentQuestionIndex(prevIndex => prevIndex + 1);
+      // } else {
+      //   // End of interview
+      //   toast({
+      //     title: "Interview Completed",
+      //     description: "You've answered all questions.",
+      //     status: "info",
+      //     duration: 3000,
+      //   });
+      // }
     }
   };
 
@@ -264,50 +361,87 @@ const AiHome = () => {
   };
 
   // Function to send response (you can customize this based on your existing logic)
-  const sendResponse = () => {
-    // Implement your response sending logic here
-    // For now, just show a toast
-    toast({
-      title: "Response Sent",
-      description: "Your response has been recorded.",
-      status: "success",
-      duration: 2000,
-    });
+  const sendResponse = async () => {
+    if (voiceText.trim()) {
+      // Add user's typed response to conversation history
+      setConversationHistory(prevHistory => [
+        ...prevHistory,
+        { role: "user", text: voiceText, timestamp: new Date() },
+      ]);
 
-    // Optional: Clear the voice text after sending
-    // setVoiceText('');
-  };
+      // Call the chat response handler with the typed text
+      const aiReply = await handleChatResponse(voiceText);
 
-  // Function to speak the current question
-  const speakQuestion = () => {
-    // Check if browser supports speech synthesis
-    if ('speechSynthesis' in window) {
-      // Stop any ongoing speech
-      window.speechSynthesis.cancel();
+      if (aiReply) {
+        setConversationHistory(prevHistory => [
+          ...prevHistory,
+          { role: "ai", text: aiReply, timestamp: new Date() },
+        ]);
+      }
 
-      // Create a new speech utterance
-      const utterance = new SpeechSynthesisUtterance(questions[currentQuestionIndex]);
+      // Clear the text area after sending
+      setVoiceText('');
 
-      // Optional: Configure speech properties
-      utterance.rate = 0.9; // Slightly slower speech
-      utterance.pitch = 1; // Normal pitch
+      // The AI is now responsible for progressing the interview
+      // No longer need to manually increment currentQuestionIndex
+      // if (currentQuestionIndex < questions.length - 1) {
+      //   setCurrentQuestionIndex(prevIndex => prevIndex + 1);
+      // } else {
+      //   // End of interview
+      //   toast({
+      //     title: "Interview Completed",
+      //     description: "You've answered all questions.",
+      //     status: "info",
+      //     duration: 3000,
+      //   });
+      // }
 
-      // Event listeners for speaking state
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-
-      // Speak the question
-      window.speechSynthesis.speak(utterance);
-    } else {
-      // Fallback for browsers that don't support speech synthesis
       toast({
-        title: "Voice Not Supported",
-        description: "Your browser does not support text-to-speech.",
+        title: "Response Sent",
+        description: "Your response has been recorded.",
+        status: "success",
+        duration: 2000,
+      });
+    } else {
+      toast({
+        title: "Empty Response",
+        description: "Please type a response before sending.",
         status: "warning",
-        duration: 3000,
+        duration: 2000,
       });
     }
   };
+
+  // Function to speak the current question (OLD - to be removed or refactored)
+  // const speakQuestion = () => {
+  //   // Check if browser supports speech synthesis
+  //   if ('speechSynthesis' in window) {
+  //     // Stop any ongoing speech
+  //     window.speechSynthesis.cancel();
+  // 
+  //     // Create a new speech utterance
+  //     const utterance = new SpeechSynthesisUtterance(questions[currentQuestionIndex]);
+  // 
+  //     // Optional: Configure speech properties
+  //     utterance.rate = 0.9; // Slightly slower speech
+  //     utterance.pitch = 1; // Normal pitch
+  // 
+  //     // Event listeners for speaking state
+  //     utterance.onstart = () => setIsSpeaking(true);
+  //     utterance.onend = () => setIsSpeaking(false);
+  // 
+  //     // Speak the question
+  //     window.speechSynthesis.speak(utterance);
+  //   } else {
+  //     // Fallback for browsers that don't support speech synthesis
+  //     toast({
+  //       title: "Voice Not Supported",
+  //       description: "Your browser does not support text-to-speech.",
+  //       status: "warning",
+  //       duration: 3000,
+  //     });
+  //   }
+  // };
 
   const bgColor = useColorModeValue('gray.50', 'gray.900');
   const cardBg = useColorModeValue('white', 'gray.800');
@@ -315,7 +449,7 @@ const AiHome = () => {
 
   // Force refresh function for webcam
   const forceRefreshWebcam = () => {
-    console.log('Force refreshing webcam...');
+    // console.log('Force refreshing webcam...');
 
     // Clear any existing timeout
     if (forceRefreshTimeoutRef.current) {
@@ -347,7 +481,7 @@ const AiHome = () => {
   const startWebcam = async () => {
     try {
       setWebcamStatus('loading');
-      console.log('Starting webcam...');
+      // console.log('Starting webcam...');
 
       // Stop any existing webcam stream first
       if (webcamStreamRef.current) {
@@ -364,7 +498,7 @@ const AiHome = () => {
       // Set up auto force refresh after 5 seconds if still loading
       forceRefreshTimeoutRef.current = setTimeout(() => {
         if (webcamStatus === 'loading') {
-          console.log('Auto force refresh triggered after 5 seconds');
+          // console.log('Auto force refresh triggered after 5 seconds');
           toast({
             title: "Auto Refresh",
             description: "Camera taking too long to load, refreshing automatically...",
@@ -386,14 +520,14 @@ const AiHome = () => {
         audio: false
       });
 
-      console.log('Webcam stream obtained:', webcamStream);
-      console.log('Video tracks:', webcamStream.getVideoTracks());
+      // console.log('Webcam stream obtained:', webcamStream);
+      // console.log('Video tracks:', webcamStream.getVideoTracks());
 
       // Check if video track is active
       const videoTrack = webcamStream.getVideoTracks()[0];
       if (videoTrack) {
-        console.log('Video track state:', videoTrack.readyState);
-        console.log('Video track settings:', videoTrack.getSettings());
+        // console.log('Video track state:', videoTrack.readyState);
+        // console.log('Video track settings:', videoTrack.getSettings());
       }
 
       // Store stream
@@ -401,7 +535,7 @@ const AiHome = () => {
 
       // Set up webcam display with promise-based approach
       if (webcamRef.current && webcamStream) {
-        console.log('Setting up webcam video element...');
+        // console.log('Setting up webcam video element...');
 
         return new Promise((resolve, reject) => {
           const video = webcamRef.current;
@@ -420,7 +554,7 @@ const AiHome = () => {
           };
 
           const handleSuccess = () => {
-            console.log('Webcam setup successful');
+            // console.log('Webcam setup successful');
             cleanup();
             setWebcamStatus('active');
             resolve(webcamStream);
@@ -435,17 +569,17 @@ const AiHome = () => {
 
           // Set up event listeners
           video.onloadedmetadata = () => {
-            console.log('Webcam metadata loaded');
-            console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+            // console.log('Webcam metadata loaded');
+            // console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
           };
 
           video.oncanplay = () => {
-            console.log('Webcam can play');
+            // console.log('Webcam can play');
             handleSuccess();
           };
 
           video.oncanplaythrough = () => {
-            console.log('Webcam can play through');
+            // console.log('Webcam can play through');
             handleSuccess();
           };
 
@@ -456,7 +590,7 @@ const AiHome = () => {
 
           // Set timeout as fallback
           timeoutId = setTimeout(() => {
-            console.log('Webcam setup timeout - forcing success');
+            // console.log('Webcam setup timeout - forcing success');
             handleSuccess();
           }, 3000);
 
@@ -465,7 +599,7 @@ const AiHome = () => {
 
           // Force play immediately
           video.play().then(() => {
-            console.log('Video play() succeeded');
+            // console.log('Video play() succeeded');
             // Don't call handleSuccess here, let the events handle it
           }).catch((playError) => {
             console.error('Video play() failed:', playError);
@@ -473,7 +607,7 @@ const AiHome = () => {
             video.muted = true;
             video.playsInline = true;
             video.play().catch(() => {
-              console.log('Second play attempt failed, but continuing...');
+              // console.log('Second play attempt failed, but continuing...');
               // Don't fail completely, the video might still work
             });
           });
@@ -617,15 +751,25 @@ const AiHome = () => {
 
   // Add a method to automatically speak the first question when interview starts
   useEffect(() => {
-    if (hasStarted && questions[currentQuestionIndex]) {
-      speakQuestion();
+    // Initiate the interview by asking the first question based on the interview stage
+    if (hasStarted && !aiQuestion) { // Only ask if interview started and no question has been set yet
+      // This initial prompt will kick off the AI to ask the first question (Introduction)
+      handleChatResponse("Start the interview."); 
     }
-  }, [hasStarted, currentQuestionIndex]);
+  }, [hasStarted, handleChatResponse, aiQuestion]); // Added aiQuestion and handleChatResponse to dependencies
+
+  // Effect to speak the AI's question when it changes
+  useEffect(() => {
+    if (aiQuestion && !isSpeaking && aiQuestion !== lastSpokenQuestionRef.current) {
+      speakAiQuestion();
+      lastSpokenQuestionRef.current = aiQuestion; // Update the ref with the newly spoken question
+    }
+  }, [aiQuestion, isSpeaking, speakAiQuestion]);
 
   // Cleanup effect
   useEffect(() => {
     const cleanup = () => {
-      console.log('=== CLEANUP ON UNMOUNT ===');
+      // console.log('=== CLEANUP ON UNMOUNT ===');
 
       // Clear auto refresh timeout
       if (forceRefreshTimeoutRef.current) {
@@ -636,7 +780,7 @@ const AiHome = () => {
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => {
           track.stop();
-          console.log('Cleanup: stopped screen track');
+          // console.log('Cleanup: stopped screen track');
         });
         screenStreamRef.current = null;
       }
@@ -644,7 +788,7 @@ const AiHome = () => {
       if (webcamStreamRef.current) {
         webcamStreamRef.current.getTracks().forEach(track => {
           track.stop();
-          console.log('Cleanup: stopped webcam track');
+          // console.log('Cleanup: stopped webcam track');
         });
         webcamStreamRef.current = null;
       }
@@ -658,7 +802,7 @@ const AiHome = () => {
 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
-        console.log('Cleanup: stopped media recorder');
+        // console.log('Cleanup: stopped media recorder');
       }
     };
 
@@ -701,11 +845,11 @@ const AiHome = () => {
   const startScreenRecording = async () => {
     try {
       if (isScreenRecording) {
-        console.log('Recording already in progress');
+        // console.log('Recording already in progress');
         return;
       }
 
-      console.log('Starting recording...');
+      // console.log('Starting recording...');
 
       // Request screen sharing first
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -724,7 +868,7 @@ const AiHome = () => {
       // Start webcam separately with auto refresh
       const webcamStream = await startWebcam();
 
-      console.log('Both streams obtained');
+      // console.log('Both streams obtained');
       screenStreamRef.current = screenStream;
 
       // Create combined stream for recording
@@ -733,20 +877,20 @@ const AiHome = () => {
       // Add video tracks
       screenStream.getVideoTracks().forEach(track => {
         combinedStream.addTrack(track);
-        console.log('Added screen video track');
+        // console.log('Added screen video track');
       });
 
       if (webcamStream) {
         webcamStream.getVideoTracks().forEach(track => {
           combinedStream.addTrack(track);
-          console.log('Added webcam video track');
+          // console.log('Added webcam video track');
         });
       }
 
       // Add only screen audio
       screenStream.getAudioTracks().forEach(track => {
         combinedStream.addTrack(track);
-        console.log('Added screen audio track');
+        // console.log('Added screen audio track');
       });
 
       combinedStreamRef.current = combinedStream;
@@ -755,7 +899,7 @@ const AiHome = () => {
       const screenVideoTrack = screenStream.getVideoTracks()[0];
       if (screenVideoTrack) {
         screenVideoTrack.onended = () => {
-          console.log('Screen sharing ended by user - stopping recording');
+          // console.log('Screen sharing ended by user - stopping recording');
           stopScreenRecording();
         };
       }
@@ -774,12 +918,12 @@ const AiHome = () => {
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunks.push(e.data);
-          console.log('Data chunk recorded:', e.data.size);
+          // console.log('Data chunk recorded:', e.data.size);
         }
       };
 
       mediaRecorder.onstop = () => {
-        console.log('MediaRecorder stopped');
+        // console.log('MediaRecorder stopped');
         const blob = new Blob(chunks, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
 
@@ -808,7 +952,7 @@ const AiHome = () => {
       mediaRecorder.start(1000);
       setIsScreenRecording(true);
 
-      console.log('Recording started successfully');
+      // console.log('Recording started successfully');
 
     } catch (err) {
       console.error("Recording start error:", err);
@@ -817,7 +961,7 @@ const AiHome = () => {
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach(track => {
           track.stop();
-          console.log('Stopped screen track on error');
+          // console.log('Stopped screen track on error');
         });
         screenStreamRef.current = null;
       }
@@ -825,7 +969,7 @@ const AiHome = () => {
       if (webcamStreamRef.current) {
         webcamStreamRef.current.getTracks().forEach(track => {
           track.stop();
-          console.log('Stopped webcam track on error');
+          // console.log('Stopped webcam track on error');
         });
         webcamStreamRef.current = null;
       }
@@ -853,7 +997,7 @@ const AiHome = () => {
   };
 
   const stopScreenRecording = () => {
-    console.log('=== STOPPING SCREEN RECORDING ===');
+    // console.log('=== STOPPING SCREEN RECORDING ===');
 
     try {
       // Clear auto refresh timeout
@@ -864,51 +1008,51 @@ const AiHome = () => {
 
       if (mediaRecorderRef.current) {
         const state = mediaRecorderRef.current.state;
-        console.log('MediaRecorder state:', state);
+        // console.log('MediaRecorder state:', state);
 
         if (state === 'recording') {
           mediaRecorderRef.current.stop();
-          console.log('MediaRecorder stopped');
+          // console.log('MediaRecorder stopped');
         }
         mediaRecorderRef.current = null;
       }
 
       if (screenStreamRef.current) {
-        console.log('Stopping screen sharing tracks...');
+        // console.log('Stopping screen sharing tracks...');
         screenStreamRef.current.getTracks().forEach((track, index) => {
-          console.log(`Stopping screen track ${index}:`, track.kind, track.readyState);
+          // console.log(`Stopping screen track ${index}:`, track.kind, track.readyState);
           track.stop();
-          console.log(`Screen track ${index} stopped, new state:`, track.readyState);
+          // console.log(`Screen track ${index} stopped, new state:`, track.readyState);
         });
         screenStreamRef.current = null;
-        console.log('Screen stream cleared');
+        // console.log('Screen stream cleared');
       }
 
       if (webcamStreamRef.current) {
-        console.log('Stopping webcam tracks...');
+        // console.log('Stopping webcam tracks...');
         webcamStreamRef.current.getTracks().forEach((track, index) => {
-          console.log(`Stopping webcam track ${index}:`, track.kind, track.readyState);
+          // console.log(`Stopping webcam track ${index}:`, track.kind, track.readyState);
           track.stop();
-          console.log(`Webcam track ${index} stopped, new state:`, track.readyState);
+          // console.log(`Webcam track ${index} stopped, new state:`, track.readyState);
         });
         webcamStreamRef.current = null;
-        console.log('Webcam stream cleared');
+        // console.log('Webcam stream cleared');
       }
 
       if (combinedStreamRef.current) {
-        console.log('Stopping combined stream tracks...');
+        // console.log('Stopping combined stream tracks...');
         combinedStreamRef.current.getTracks().forEach((track, index) => {
-          console.log(`Stopping combined track ${index}:`, track.kind, track.readyState);
+          // console.log(`Stopping combined track ${index}:`, track.kind, track.readyState);
           track.stop();
         });
         combinedStreamRef.current = null;
-        console.log('Combined stream cleared');
+        // console.log('Combined stream cleared');
       }
 
       if (webcamRef.current) {
         webcamRef.current.srcObject = null;
         webcamRef.current.load();
-        console.log('Webcam video element cleared');
+        // console.log('Webcam video element cleared');
       }
 
       setIsScreenRecording(false);
@@ -916,7 +1060,7 @@ const AiHome = () => {
       setIsTimerRunning(false);
       setWebcamStatus('inactive');
 
-      console.log('=== ALL RECORDING STOPPED ===');
+      // console.log('=== ALL RECORDING STOPPED ===');
 
       toast({
         title: "Interview Finished",
@@ -945,22 +1089,6 @@ const AiHome = () => {
         duration: 3000,
         isClosable: true,
       });
-    }
-  };
-
-  const skipQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setVoiceText("");
-    } else {
-      toast({
-        title: "Interview Completed!",
-        description: "No more questions left.",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-      stopScreenRecording();
     }
   };
 
@@ -1029,10 +1157,10 @@ const AiHome = () => {
               >
                 <Text fontWeight="bold" color="blue.500" mb={2}>AI Interviewer says:</Text>
                 <HStack spacing={2} align="center">
-                  <Text fontSize="lg">{questions[currentQuestionIndex]}</Text>
+                  <Text fontSize="lg">{aiQuestion}</Text>
                   <IconButton
                     icon={isSpeaking ? <FaStop /> : <FaMicrophone />}
-                    onClick={speakQuestion}
+                    onClick={speakAiQuestion}
                     colorScheme={isSpeaking ? "red" : "blue"}
                     size="sm"
                     variant="outline"
@@ -1041,6 +1169,34 @@ const AiHome = () => {
                   />
                 </HStack>
               </Box>
+
+              {/* Conversation History */}
+              <VStack spacing={4} align="stretch" maxH="400px" overflowY="auto" p={3} bg={cardBg} borderRadius="md" boxShadow="inner">
+                {conversationHistory.map((message, index) => (
+                  <Flex
+                    key={index}
+                    justify={message.role === "user" ? "flex-end" : "flex-start"}
+                  >
+                    <Box
+                      bg={message.role === "user" ? "blue.100" : "gray.100"}
+                      color={message.role === "user" ? "blue.800" : "gray.800"}
+                      px={4}
+                      py={2}
+                      borderRadius="lg"
+                      maxW="70%"
+                      boxShadow="sm"
+                    >
+                      <Text fontSize="sm" fontWeight="bold" mb={1}>
+                        {message.role === "user" ? "You" : "AI Interviewer"}
+                      </Text>
+                      <Text>{message.text}</Text>
+                      <Text fontSize="xs" color="gray.500" mt={1}>
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </Text>
+                    </Box>
+                  </Flex>
+                ))}
+              </VStack>
 
               {/* Code Editor */}
               <CodeEditor
@@ -1216,8 +1372,12 @@ const AiHome = () => {
                 </HStack>
                 <VStack align="stretch" spacing={3} mt={2}>
                   <Flex justify="space-between">
+                    <Text fontSize="sm" color="gray.500">Stage:</Text>
+                    <Badge colorScheme="purple">{interviewStage.replace("_", " ").toUpperCase()}</Badge>
+                  </Flex>
+                  <Flex justify="space-between">
                     <Text fontSize="sm" color="gray.500">Questions:</Text>
-                    <Badge>{currentQuestionIndex + 1}/{questions.length}</Badge>
+                    <Badge>{conversationHistory.filter(msg => msg.role === 'ai' && msg.text.includes("?")).length}</Badge>
                   </Flex>
                   <Flex justify="space-between">
                     <Text fontSize="sm" color="gray.500">Mode:</Text>
@@ -1298,13 +1458,13 @@ const AiHome = () => {
               display: webcamStatus === 'active' ? 'block' : 'none'
             }}
             onLoadedData={() => {
-              console.log('Video loaded data event');
+              // console.log('Video loaded data event');
               if (webcamStatus === 'loading') {
                 setWebcamStatus('active');
               }
             }}
             onPlaying={() => {
-              console.log('Video playing event');
+              // console.log('Video playing event');
               setWebcamStatus('active');
             }}
           />
