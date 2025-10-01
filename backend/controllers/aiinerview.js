@@ -35,8 +35,7 @@ ai.post('/chat', async (req, res) => {
       messages: messages, // Pass the constructed messages array
     }, {
       headers: {
-        'x-api-key': "add your key",
-        'Content-Type': 'application/json',
+        'x-api-key':  'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01'
       }
     });

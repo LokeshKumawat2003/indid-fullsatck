@@ -10,49 +10,52 @@ import {
   Text,
   VStack,
   Divider,
+  Spinner, // Import Spinner
 } from '@chakra-ui/react';
 import { FaCode } from 'react-icons/fa';
 
 const CodeEditor = () => {
   const [code, setCode] = useState(
-`// Example DSA code
-function sum(a) {
-  for (let i = 0; i < a; i++) {
-    if (i === 3) {
-      console.log("Found 3 at index:", i);
-    }
+`function isPalindrome(str) {
+  let i = 0, j = str.length - 1;
+  while (i < j) {
+    if (str[i] !== str[j]) return false;
+    i++; j--;
   }
+  return true;
 }
-// Call the function
-sum(5);`
+
+console.log(isPalindrome("madam"));`
   );
   const [output, setOutput] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // New state for loader
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
-  const runCode = () => {
+  const runCode = async () => {
+    setIsLoading(true); // Set loading to true before API call
     try {
-      let result = '';
-      // Override console.log to capture output
-      const originalConsoleLog = console.log;
-      console.log = (...args) => {
-        result += args.map(arg =>
-          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
-        ).join(' ') + '\n';
-      };
-
-      // eslint-disable-next-line no-eval
-      eval(code); // Run JS code
-
-      console.log = originalConsoleLog;
-      setOutput(result || 'Code executed successfully, but no output.');
+      const res = await fetch("http://localhost:5000/api/code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: code }), // ✅ match backend
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOutput(data.output); // raw AI output
+      } else {
+        setOutput("Error: " + (data.error || "Unknown error occurred."));
+      }
     } catch (err) {
-      setOutput('Error: ' + err.message);
+      setOutput("Error: " + err.message);
+    } finally {
+      setIsLoading(false); // Set loading to false after API call completes (success or error)
     }
   };
 
   return (
     <VStack spacing={4} w="full">
+      {/* Code editor box */}
       <Box
         w="full"
         p={4}
@@ -83,6 +86,7 @@ sum(5);`
         </HStack>
       </Box>
 
+      {/* Output box */}
       <Box
         w="full"
         p={4}
@@ -95,9 +99,15 @@ sum(5);`
           Output:
         </Heading>
         <Divider mb={2} />
-        <Text fontFamily="monospace" whiteSpace="pre-wrap">
-          {output}
-        </Text>
+        {isLoading ? (
+          <Flex justify="center" align="center" minH="100px">
+            <Spinner size="xl" />
+          </Flex>
+        ) : (
+          <Text fontFamily="monospace" whiteSpace="pre-wrap">
+            {output}
+          </Text>
+        )}
       </Box>
     </VStack>
   );

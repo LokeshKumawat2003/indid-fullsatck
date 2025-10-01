@@ -7,6 +7,7 @@ const connectDB = require('./config/Db');
 const errorHandler = require('./Middleware/errorHandler');
 
 const ai = require('./controllers/aiinerview');
+const codeediter = require('./controllers/codeEditr');
 const PORT = process.env.PORT || 5000;
 
 const app = express();
@@ -27,7 +28,7 @@ app.get('/', (req, res) => {
 
 
 app.use("/api",ai)
-
+app.use("/api",codeediter)
 app.use(errorHandler);
 
 connectDB()
