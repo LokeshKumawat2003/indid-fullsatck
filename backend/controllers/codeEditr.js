@@ -10,7 +10,6 @@ codeediter.post('/code', async (req, res) => {
   try {
     const { prompt, model, sessionId, userId, conversationHistory } = req.body;
 
-    // Load or create interview session
     let session;
     if (sessionId) {
       session = await InterviewSession.findById(sessionId);
@@ -22,7 +21,6 @@ codeediter.post('/code', async (req, res) => {
       await session.save();
     }
 
-    // Construct messages for Anthropic
     const systemMessage = `
     You are a strict DSA and JavaScript code executor. 
     You only execute and return the **raw code output** or the code itself when requested. 
@@ -94,36 +92,32 @@ codeediter.post('/code', async (req, res) => {
       { role: "user", content: prompt }
     ];
 
-    // Call Anthropic API
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
         model: model || "claude-3-5-sonnet-20241022",
         max_tokens: 4000,
         temperature: 0.7,
-        system: systemMessage, // Add system message here
+        system: systemMessage, 
         messages
       },
       {
         headers: {
-          'x-api-key': 
+         
           'Content-Type': 'application/json',
           'anthropic-version': '2023-06-01'
         }
       }
     );
 
-    // Extract raw output
     const aiResponseText = response.data?.content?.[0]?.text || "";
 
-    // Save question & answer to session
     session.questionsAndAnswers.push({
       question: prompt,
       aiResponse: aiResponseText
     });
     await session.save();
 
-    // Return only raw output and sessionId
     res.status(200).json({
       success: true,
       output: aiResponseText,

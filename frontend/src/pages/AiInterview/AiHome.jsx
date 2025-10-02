@@ -87,8 +87,8 @@ const AiHome = () => {
     if ('speechSynthesis' in window && aiQuestion) { // Ensure aiQuestion is not empty
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(aiQuestion);
-      utterance.rate = 0.9; 
-      utterance.pitch = 1; 
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
       window.speechSynthesis.speak(utterance);
@@ -155,9 +155,10 @@ const AiHome = () => {
         // A more robust solution might involve the AI structuring its response (e.g., JSON output).
 
         // Heuristic: only set aiQuestion if the response ends with a question mark, indicating it's a question
-        if (aiResponseContent.trim().endsWith('?')) {
-          setAiQuestion(aiResponseContent); // Set the AI's response as the next question
-        }
+        // if (aiResponseContent.trim().endsWith('?')) {
+        //   setAiQuestion(aiResponseContent); // Set the AI's response as the next question
+        // }
+        setAiQuestion(aiResponseContent);
 
         return aiResponseContent; // Return the AI's reply
       } else {
@@ -754,7 +755,7 @@ const AiHome = () => {
     // Initiate the interview by asking the first question based on the interview stage
     if (hasStarted && !aiQuestion) { // Only ask if interview started and no question has been set yet
       // This initial prompt will kick off the AI to ask the first question (Introduction)
-      handleChatResponse("Start the interview."); 
+      handleChatResponse("Start the interview.");
     }
   }, [hasStarted, handleChatResponse, aiQuestion]); // Added aiQuestion and handleChatResponse to dependencies
 

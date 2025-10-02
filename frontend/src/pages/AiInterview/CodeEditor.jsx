@@ -16,16 +16,16 @@ import { FaCode } from 'react-icons/fa';
 
 const CodeEditor = () => {
   const [code, setCode] = useState(
-`function isPalindrome(str) {
-  let i = 0, j = str.length - 1;
-  while (i < j) {
-    if (str[i] !== str[j]) return false;
-    i++; j--;
-  }
-  return true;
+`function dsa() {
+
+
+ // Write code here
+
+
+
 }
 
-console.log(isPalindrome("madam"));`
+console.log(dsa());`
   );
   const [output, setOutput] = useState('');
   const [isLoading, setIsLoading] = useState(false); // New state for loader

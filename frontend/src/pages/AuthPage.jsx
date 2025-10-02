@@ -1,4 +1,4 @@
-"use client";
+
 
 import React, { useState } from "react";
 import {
@@ -11,19 +11,82 @@ import {
   HStack,
   Link,
   Divider,
+  useToast,
 } from "@chakra-ui/react";
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true); // toggle between login/signup
+  const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      const url = isLogin
+        ? "http://localhost:5000/auth/login"
+        : "http://localhost:5000/auth/signup";
+
+      const payload = isLogin
+        ? {
+          email: formData.email,
+          password: formData.password,
+        }
+        : {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+        };
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Something went wrong");
+      }
+
+      toast({
+        title: isLogin ? "Login successful!" : "Signup successful!",
+        description: JSON.stringify(data),
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      // Example: save token in localStorage
+      if (data.token) {
+        localStorage.setItem("aijob", data.token);
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Flex
-      minH="100vh"
-      bg="gray.50"
-      align="center"
-      justify="center"
-      px={4}
-    >
+    <Flex minH="100vh" bg="gray.50" align="center" justify="center" px={4}>
       <Box
         bg="white"
         p={10}
@@ -54,9 +117,26 @@ export default function AuthPage() {
         {isLogin ? (
           // Login Form
           <VStack spacing={4} align="stretch">
-            <Input placeholder="Email" type="email" bg="gray.100" />
-            <Input placeholder="Password" type="password" bg="gray.100" />
-            <Button colorScheme="blue" w="full">
+            <Input
+              name="email"
+              placeholder="Email"
+              type="email"
+              bg="gray.100"
+              onChange={handleChange}
+            />
+            <Input
+              name="password"
+              placeholder="Password"
+              type="password"
+              bg="gray.100"
+              onChange={handleChange}
+            />
+            <Button
+              colorScheme="blue"
+              w="full"
+              onClick={handleSubmit}
+              isLoading={loading}
+            >
               Login
             </Button>
             <Text fontSize="sm" textAlign="center">
@@ -69,11 +149,39 @@ export default function AuthPage() {
         ) : (
           // Signup Form
           <VStack spacing={4} align="stretch">
-            <Input placeholder="Full Name" bg="gray.100" />
-            <Input placeholder="Email" type="email" bg="gray.100" />
-            <Input placeholder="Password" type="password" bg="gray.100" />
-            <Input placeholder="Confirm Password" type="password" bg="gray.100" />
-            <Button colorScheme="blue" w="full">
+            <Input
+              name="name"
+              placeholder="Full Name"
+              bg="gray.100"
+              onChange={handleChange}
+            />
+            <Input
+              name="email"
+              placeholder="Email"
+              type="email"
+              bg="gray.100"
+              onChange={handleChange}
+            />
+            <Input
+              name="password"
+              placeholder="Password"
+              type="password"
+              bg="gray.100"
+              onChange={handleChange}
+            />
+            <Input
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              type="password"
+              bg="gray.100"
+              onChange={handleChange}
+            />
+            <Button
+              colorScheme="blue"
+              w="full"
+              onClick={handleSubmit}
+              isLoading={loading}
+            >
               Signup
             </Button>
             <Text fontSize="sm" textAlign="center">
@@ -88,3 +196,4 @@ export default function AuthPage() {
     </Flex>
   );
 }
+
