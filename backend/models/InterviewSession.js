@@ -15,6 +15,7 @@ const interviewSessionSchema = new mongoose.Schema({
   ],
   overallFeedback: { type: String },
   score: { type: Number },
+  nextRound: { type: Boolean, default: false },
 });
 
 const InterviewSession = mongoose.model('InterviewSession', interviewSessionSchema);

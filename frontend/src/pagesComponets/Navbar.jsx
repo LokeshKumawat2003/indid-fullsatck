@@ -38,7 +38,21 @@ export default function Navbar() {
                         >
                             Home
                         </Box>
-
+                        <Box
+                            as={RouterLink}
+                            to="/applications"
+                            color="gray.700"
+                            pb={1}
+                            _hover={{
+                                textDecoration: "none",
+                                color: "blue.500",
+                                borderBottom: "2px",
+                                borderColor: "blue.600",
+                            }}
+                            _focus={{ boxShadow: "none" }}
+                        >
+                            applications
+                        </Box>
                         <Box
                             as={RouterLink}
                             to="/companyreviews"

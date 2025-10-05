@@ -47,15 +47,14 @@ Rules:
 3. **Project Experience** → Ask general project questions, then technical questions (frontend/backend) and deeper follow-ups.  
    - Between question 15–20, include **medium-level technical/DSA** (e.g., array/object manipulation, algorithms) drawn from their experience.  
    - Do not give answers, only ask questions.  
-4. **Wrap-up** → Ask about future goals, desired technologies/frameworks, and teamwork comfort.  
+4. **Wrap-up** → Ask about future goals, desired technologies/frameworks, and teamwork comfort. After the wrap-up, please evaluate all the candidate's answers throughout the interview. Assign a score from 0 to 10. If the score is greater than 5, the candidate qualifies for the next round. Please output the score and qualification status clearly at the end of the interview.
 
 Your responses must stay concise, relevant, and move the candidate smoothly to the next stage or next question in the current stage.  
 Current question count: ${questionCount}.
 `,
       messages: messages,
     }, {
-      headers: {
-        'x-api-key':     'Content-Type': 'application/json',
+      headers: {  'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01'
       }
     });
@@ -67,12 +66,29 @@ Current question count: ${questionCount}.
       question: prompt,
       aiResponse: aiResponseText,
     });
+    
+    let score = null;
+    let nextRound = false;
+
+    const scoreMatch = aiResponseText.match(/Score: (\d+)/);
+    if (scoreMatch && scoreMatch[1]) {
+      score = parseInt(scoreMatch[1], 10);
+      if (score > 5) {
+        nextRound = true;
+      }
+    }
+
+    session.score = score;
+    session.nextRound = nextRound;
+    
     await session.save();
 
     res.status(200).json({
       success: true,
       response: response.data,
       sessionId: session._id,
+      score: score,
+      nextRound: nextRound,
     });
 
   } catch (error) {

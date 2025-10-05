@@ -30,6 +30,7 @@ app.get('/', (req, res) => {
 app.use("/api",ai)
 app.use("/api",codeediter)
 app.use('/auth', authRoutes)
+app.use('/jobpost', authRoutes)
 
 connectDB()
   .then(() => {
