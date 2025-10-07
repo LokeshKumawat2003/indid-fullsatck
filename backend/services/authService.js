@@ -40,7 +40,7 @@ const authService = {
                 token: generateToken(user._id),
             };
         } catch (error) {
-            console.error("Signup error:", error);
+            console.error("Signup error:", error.message, error.stack);
             throw error;
         }
     },

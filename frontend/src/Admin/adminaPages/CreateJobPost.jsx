@@ -24,6 +24,7 @@ import {
 } from "@chakra-ui/react";
 import { FiBriefcase, FiMapPin, FiDollarSign, FiPlus } from "react-icons/fi";
 import { FaBuilding } from "react-icons/fa";
+import { appRequest } from "../../../src/Routes/backendRutes";
 
 function CreateJobPost() {
   const [skills, setSkills] = useState([]);
@@ -43,10 +44,41 @@ function CreateJobPost() {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleCreateJobPost = async (jobPostData) => {
+    try {
+      const response = await appRequest("post", "createJobPost", jobPostData);
+      toast({
+        title: "Job Post Created!",
+        description: `${jobPostData.title} at ${jobPostData.company}`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      console.log("Job Post Created Successfully:", response);
+      // Clear form
+      setFormData({});
+      setSkills([]);
+    } catch (error) {
+      console.error("Error creating job post:", error);
+      toast({
+        title: "Failed to create job post",
+        description: error?.message || "Something went wrong",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   const handleSubmit = () => {
+    // Required fields validation
     if (!formData.title || !formData.company || !formData.description) {
       toast({
         title: "Please fill all required fields",
@@ -57,15 +89,12 @@ function CreateJobPost() {
       return;
     }
 
-    toast({
-      title: "Job Post Published!",
-      description: `${formData.title} at ${formData.company}`,
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
+    const jobPostData = {
+      ...formData,
+      skills,
+    };
 
-    console.log("Form Submitted:", { ...formData, skills });
+    handleCreateJobPost(jobPostData);
   };
 
   return (
@@ -93,6 +122,7 @@ function CreateJobPost() {
                 <Input
                   name="title"
                   placeholder="e.g., Software QA Engineer"
+                  value={formData.title || ""}
                   onChange={handleChange}
                   rounded="lg"
                   _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -108,6 +138,7 @@ function CreateJobPost() {
                 <Input
                   name="company"
                   placeholder="e.g., Oscorp"
+                  value={formData.company || ""}
                   onChange={handleChange}
                   rounded="lg"
                   _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -127,6 +158,7 @@ function CreateJobPost() {
                 <Input 
                   name="location" 
                   placeholder="e.g., San Diego, CA" 
+                  value={formData.location || ""}
                   onChange={handleChange}
                   rounded="lg"
                   _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -142,6 +174,7 @@ function CreateJobPost() {
                 <Input 
                   name="salary" 
                   placeholder="e.g., $90k - $110k" 
+                  value={formData.salary || ""}
                   onChange={handleChange}
                   rounded="lg"
                   _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -157,6 +190,7 @@ function CreateJobPost() {
               <Select 
                 name="workMode" 
                 placeholder="Select work mode" 
+                value={formData.workMode || ""}
                 onChange={handleChange}
                 rounded="lg"
                 _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -171,6 +205,7 @@ function CreateJobPost() {
               <Select 
                 name="jobType" 
                 placeholder="Select job type" 
+                value={formData.jobType || ""}
                 onChange={handleChange}
                 rounded="lg"
                 _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -190,6 +225,7 @@ function CreateJobPost() {
               <Input 
                 name="language" 
                 placeholder="e.g., English" 
+                value={formData.language || ""}
                 onChange={handleChange}
                 rounded="lg"
                 _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -200,6 +236,7 @@ function CreateJobPost() {
               <Input 
                 name="experience" 
                 placeholder="e.g., 2-4 years" 
+                value={formData.experience || ""}
                 onChange={handleChange}
                 rounded="lg"
                 _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -214,6 +251,7 @@ function CreateJobPost() {
               <Input
                 name="education"
                 placeholder="e.g., Bachelor's in Computer Science"
+                value={formData.education || ""}
                 onChange={handleChange}
                 rounded="lg"
                 _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -225,6 +263,7 @@ function CreateJobPost() {
                 name="openings" 
                 placeholder="e.g., 2" 
                 type="number" 
+                value={formData.openings || ""}
                 onChange={handleChange}
                 rounded="lg"
                 _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -273,6 +312,7 @@ function CreateJobPost() {
             <Textarea
               name="benefits"
               placeholder="e.g., Health Insurance, Annual Bonus, Training Budget"
+              value={formData.benefits || ""}
               onChange={handleChange}
               rounded="lg"
               _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -287,6 +327,7 @@ function CreateJobPost() {
               name="description"
               placeholder="Describe the job responsibilities and requirements..."
               rows={6}
+              value={formData.description || ""}
               onChange={handleChange}
               rounded="lg"
               _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
@@ -297,6 +338,7 @@ function CreateJobPost() {
           <HStack spacing={8} pt={2}>
             <Checkbox 
               name="aiInterview" 
+              isChecked={formData.aiInterview || false}
               onChange={handleChange}
               colorScheme="blue"
               size="lg"
@@ -305,6 +347,7 @@ function CreateJobPost() {
             </Checkbox>
             <Checkbox 
               name="easyApply" 
+              isChecked={formData.easyApply || false}
               onChange={handleChange}
               colorScheme="blue"
               size="lg"

@@ -13,6 +13,7 @@ import { ApplicationResponse } from "./pages/applicationResponse/ApplicationResp
 import { Applications } from "./pages/applicationResponse/Applications";
 import AdminDeshBord from "./Admin/adminaPages/AdminDeshBord";
 import { AdminRoutes } from "./Admin/adminaPages/Routes/AdminRoutes";
+import ProfileForm from "./pages/Profile/ProfileForm";
 // ...existing code...
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
         <Route path="/companyreviews" element={<Companyreviews />} />
         <Route path="/Salaryguide" element={<Salaryguide />} />
         <Route path="/Auth" element={<AuthPage />} />
+        <Route path="/profile" element={<ProfileForm />} />
 
         <Route path="/admin/*" element={<AdminDeshBord />} />
 

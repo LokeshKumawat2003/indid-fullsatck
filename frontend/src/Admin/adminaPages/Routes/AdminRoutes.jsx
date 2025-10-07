@@ -2,11 +2,11 @@ import { Routes, Route } from "react-router-dom";
 import Applications from "../Applications";
 import CreateJobPost from "../CreateJobPost";
 import Interview from "../Interview";
-import JobsHome from "../JobsHome";
-import JobPostDetails from "../JobpostDetails";
-import JobEdit from "../jobEidit";
 import StudentResponse from "../StudentResponce";
 import FinalRound from "../Finelround";
+import JobsHome from "../postCurd/JobsHome";
+import JobEdit from "../postCurd/jobEidit";
+import JobPostDetails from "../postCurd/JobpostDetails";
 
 export const AdminRoutes = () => {
   return (

@@ -1,0 +1,40 @@
+{
+  "auth": {
+    "login": {
+      "method": "POST",
+      "url": "api/auth/login"
+    },
+    "signup": {
+      "method": "POST",
+      "url": "api/auth/signup"
+    }
+  },
+  "post": {
+    "createJobPost": {
+      "method": "POST",
+      "url": "api/post/createJobPost",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    },
+    "getAllJobPosts": {
+      "method": "GET",
+      "url": "api/post/getAllJobPosts",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    },
+    "getJobPostById": {
+      "method": "GET",
+      "url": "api/post/getJobPostById"
+    },
+    "updateJobPost": {
+      "method": "PUT",
+      "url": "api/post/updateJobPost"
+    },
+    "deleteJobPost": {
+      "method": "DELETE",
+      "url": "api/post/deleteJobPost"
+    }
+  }
+}

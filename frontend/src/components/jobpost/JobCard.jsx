@@ -1,81 +1,87 @@
 import { Box, Text, HStack, Badge, IconButton, VStack } from "@chakra-ui/react"
-import { FaStar, FaBolt, FaChevronRight, FaBookmark } from "react-icons/fa"
+import { FaStar, FaBolt, FaBookmark, FaMapMarkerAlt, FaCheckCircle } from "react-icons/fa"
 
 export default function JobCard({ job, onClick }) {
   return (
     <Box
-      borderWidth="1px"
-      borderRadius="12px"
+      borderWidth="0"
+      borderLeftWidth="4px"
+      borderLeftColor="blue.500"
+      borderRadius="8px"
       p={5}
       mb={3}
-      bg="white"
+      bg="gray.50"
       cursor="pointer"
-      _hover={{ shadow: "sm" }}
+      _hover={{ 
+        bg: "white",
+        shadow: "md"
+      }}
       position="relative"
-      borderColor="gray.300"
-      shadow="sm"
+      transition="all 0.3s"
       onClick={() => onClick(job)}
     >
-      <IconButton
-        aria-label="Bookmark job"
-        icon={<FaBookmark />}
-        variant="ghost"
-        size="sm"
-        position="absolute"
-        top={4}
-        right={4}
-        color="gray.400"
-        _hover={{ color: "gray.600" }}
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent triggering card click
-          // Add bookmark logic if needed
-        }}
-      />
+      <HStack justify="space-between" align="start" mb={4}>
+        <VStack align="start" spacing={1} flex="1">
+          <Text fontSize="lg" fontWeight="700" color="gray.800">
+            {job.title}
+          </Text>
+          <Text fontSize="md" color="gray.600" fontWeight="500">
+            {job.company}
+          </Text>
+        </VStack>
+        
+        <IconButton
+          aria-label="Bookmark job"
+          icon={<FaBookmark />}
+          variant="ghost"
+          size="sm"
+          color="gray.400"
+          _hover={{ color: "blue.500" }}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        />
+      </HStack>
 
-      <Text fontSize="lg" fontWeight="600" color="gray.900" mb={2} pr={10}>
-        {job.title}
-      </Text>
-
-      <HStack spacing={2} mb={1}>
-        <Text fontSize="sm" color="gray.700" fontWeight="500">
-          {job.company}
-        </Text>
+      <HStack spacing={4} mb={4} flexWrap="wrap">
+        <HStack spacing={1.5}>
+          <FaMapMarkerAlt color="#718096" size="12px" />
+          <Text fontSize="sm" color="gray.600">
+            {job.location}
+          </Text>
+        </HStack>
+        
         {job.rating && (
-          <HStack spacing={1}>
-            <Text fontSize="sm" color="gray.700" fontWeight="500">
+          <HStack spacing={1.5}>
+            <FaStar color="#F6AD55" size="12px" />
+            <Text fontSize="sm" color="gray.700" fontWeight="600">
               {job.rating}
             </Text>
-            <FaStar color="#F6AD55" size="12px" />
+          </HStack>
+        )}
+        
+        {job.responseTime && (
+          <HStack spacing={1.5}>
+            <FaBolt color="#3182CE" size="12px" />
+            <Text fontSize="sm" color="gray.600">
+              {job.responseTime}
+            </Text>
           </HStack>
         )}
       </HStack>
 
-      <Text fontSize="sm" color="gray.600" mb={3}>
-        {job.location}
-      </Text>
-
-      {job.responseTime && (
-        <HStack spacing={2} mb={4}>
-          <FaBolt color="#3182CE" size="12px" />
-          <Text fontSize="sm" color="gray.600">
-            {job.responseTime}
-          </Text>
-        </HStack>
-      )}
-
-      <HStack spacing={3} mb={2} flexWrap="wrap" align="center">
-        <Text fontSize="sm" fontWeight="600" color="gray.800">
+      <HStack spacing={3} mb={3} flexWrap="wrap">
+        <Text fontSize="md" fontWeight="700" color="green.600">
           {job.salary}
         </Text>
         {job.jobType && (
           <Badge
-            bg="gray.100"
-            color="gray.700"
+            colorScheme="blue"
             fontSize="xs"
-            px={2}
-            py={1}
-            borderRadius="4px"
-            fontWeight="500"
+            px={2.5}
+            py={0.5}
+            borderRadius="md"
+            fontWeight="600"
           >
             {job.jobType}
           </Badge>
@@ -83,11 +89,14 @@ export default function JobCard({ job, onClick }) {
       </HStack>
 
       {job.benefits && job.benefits.length > 0 && (
-        <VStack align="start" spacing={2} mb={4}>
+        <VStack align="start" spacing={1.5}>
           {job.benefits.map((benefit, index) => (
-            <Text key={index} fontSize="sm" color="gray.600">
-              {benefit}
-            </Text>
+            <HStack key={index} spacing={2}>
+              <FaCheckCircle color="#48BB78" size="10px" />
+              <Text fontSize="xs" color="gray.600">
+                {benefit}
+              </Text>
+            </HStack>
           ))}
         </VStack>
       )}

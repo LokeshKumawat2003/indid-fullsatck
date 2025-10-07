@@ -9,6 +9,8 @@ import {
   List,
   ListItem,
   Link,
+  Badge,
+  Divider
 } from "@chakra-ui/react"
 import {
   Bookmark,
@@ -17,7 +19,8 @@ import {
   Briefcase,
   IndianRupee,
   Star,
-  X
+  X,
+  CheckCircle
 } from "lucide-react";
 import { useState } from "react"; 
 import { useNavigate } from "react-router-dom";
@@ -40,127 +43,176 @@ export default function JobDetail({ job }) {
 
   return (
     <>
-      <Box width="5xl" mx="auto" bg="white" border="1px" borderColor="gray.300" shadow="sm" h={"80vh"} overflow={"auto"}>
+      <Box width="5xl" mx="auto" bg="white" borderRadius="12px" shadow="lg" h={"80vh"} overflow={"auto"}>
         {/* Header Section */}
-        <Box p={6} borderBottom="1px" borderColor="gray.200">
-          <Heading as="h1" size="xl" color="gray.900" mb={2}>
-            {job?.title ?? 'Job Title Not Available'}
-          </Heading>
+        <Box p={8} bg="gradient-to-r" bgGradient="linear(to-r, blue.50, purple.50)">
+          <HStack justify="space-between" align="start" mb={4}>
+            <VStack align="start" spacing={3} flex="1">
+              <Heading as="h1" size="xl" color="gray.800">
+                {job?.title ?? 'Job Title Not Available'}
+              </Heading>
 
-          <HStack spacing={2} mb={1}>
-            <Link color="blue.600" fontWeight="medium" textDecoration="underline" cursor="pointer">
-              {job?.company ?? 'Company Not Specified'}
-            </Link>
-            {job?.rating && (
-              <HStack spacing={1}>
-                <Text fontSize="sm" color="gray.600">
-                  {job.rating}
-                </Text>
-                <Box as={Star} w={4} h={4} fill="yellow.400" color="yellow.400" />
+              <HStack spacing={3} flexWrap="wrap">
+                <Link 
+                  color="blue.600" 
+                  fontWeight="600" 
+                  fontSize="lg"
+                  _hover={{ color: "blue.700", textDecoration: "underline" }}
+                >
+                  {job?.company ?? 'Company Not Specified'}
+                </Link>
+                {job?.rating && (
+                  <HStack 
+                    spacing={1} 
+                    bg="white" 
+                    px={3} 
+                    py={1} 
+                    borderRadius="full"
+                    shadow="sm"
+                  >
+                    <Box as={Star} w={4} h={4} fill="#F6AD55" color="#F6AD55" />
+                    <Text fontSize="sm" color="gray.700" fontWeight="600">
+                      {job.rating}
+                    </Text>
+                  </HStack>
+                )}
               </HStack>
-            )}
+
+              <HStack spacing={2}>
+                <Box as={MapPin} w={4} h={4} color="gray.600" />
+                <Text color="gray.700" fontSize="md" fontWeight="500">
+                  {job?.location ?? 'Location Not Specified'}
+                </Text>
+              </HStack>
+
+              <HStack 
+                bg="green.50" 
+                px={4} 
+                py={2} 
+                borderRadius="md"
+                borderWidth="1px"
+                borderColor="green.200"
+              >
+                <Box as={IndianRupee} w={5} h={5} color="green.600" />
+                <Text color="green.700" fontWeight="700" fontSize="lg">
+                  {job?.salary ?? 'Salary Not Disclosed'}
+                </Text>
+              </HStack>
+            </VStack>
+
+            <HStack spacing={2}>
+              <IconButton
+                aria-label="Bookmark"
+                icon={<Bookmark size={20} />}
+                bg="white"
+                _hover={{ bg: "blue.50", color: "blue.600" }}
+                shadow="sm"
+                borderRadius="full"
+                color="gray.600"
+              />
+              <IconButton
+                aria-label="Share"
+                icon={<Share2 size={20} />}
+                bg="white"
+                _hover={{ bg: "blue.50", color: "blue.600" }}
+                shadow="sm"
+                borderRadius="full"
+                color="gray.600"
+              />
+            </HStack>
           </HStack>
 
-          <Text color="gray.600" mb={4}>
-            {job?.location ?? 'Location Not Specified'}
-          </Text>
-
-          <Text color="gray.900" fontWeight="medium" mb={4}>
-            {job?.salary ?? 'Salary Not Disclosed'}
-          </Text>
-
-          <HStack spacing={3}>
-            <Button 
-              bg="blue.600" 
-              _hover={{ bg: "blue.700" }} 
-              color="white" 
-              px={6} 
-              py={2}
-              onClick={handleApplyNow}
-            >
-              Apply now
-            </Button>
-            <IconButton
-              aria-label="Bookmark"
-              icon={<Bookmark size={20} />}
-              bg="gray.100"
-              _hover={{ bg: "gray.200" }}
-              border="1px"
-              borderColor="gray.300"
-              color="gray.600"
-            />
-            <IconButton
-              aria-label="Share"
-              icon={<Share2 size={20} />}
-              bg="gray.100"
-              _hover={{ bg: "gray.200" }}
-              border="1px"
-              borderColor="gray.300"
-              color="gray.600"
-            />
-          </HStack>
+          <Button 
+            bg="blue.600" 
+            _hover={{ bg: "blue.700", transform: "translateY(-2px)" }} 
+            color="white" 
+            px={8} 
+            py={6}
+            fontSize="md"
+            fontWeight="600"
+            borderRadius="lg"
+            shadow="md"
+            transition="all 0.2s"
+            onClick={handleApplyNow}
+          >
+            Apply Now
+          </Button>
         </Box>
 
         {/* Job Details */}
-        <Box p={6} borderBottom="1px" borderColor="gray.200">
-          <Heading as="h2" size="lg" color="gray.900" mb={4}>
-            Job details
+        <Box p={8}>
+          <Heading as="h2" size="md" color="gray.800" mb={5}>
+            Job Details
           </Heading>
 
-          <VStack spacing={4} align="start">
-            <HStack spacing={3} align="start">
-              <Box as={IndianRupee} w={5} h={5} color="gray.500" mt={0.5} />
+          <HStack spacing={8} flexWrap="wrap">
+            <HStack 
+              spacing={3} 
+              bg="gray.50" 
+              px={5} 
+              py={4} 
+              borderRadius="lg"
+              flex="1"
+              minW="200px"
+            >
+              <Box as={IndianRupee} w={6} h={6} color="blue.500" />
               <Box>
-                <Text fontWeight="medium" color="gray.900">Pay</Text>
-                <Text color="gray.600">{job?.salary ?? 'Salary Not Disclosed'}</Text>
+                <Text fontSize="xs" color="gray.500" fontWeight="600" textTransform="uppercase">Pay</Text>
+                <Text fontWeight="600" color="gray.800" fontSize="md">{job?.salary ?? 'Not Disclosed'}</Text>
               </Box>
             </HStack>
 
-            <HStack spacing={3} align="start">
-              <Box as={Briefcase} w={5} h={5} color="gray.500" mt={0.5} />
+            <HStack 
+              spacing={3} 
+              bg="gray.50" 
+              px={5} 
+              py={4} 
+              borderRadius="lg"
+              flex="1"
+              minW="200px"
+            >
+              <Box as={Briefcase} w={6} h={6} color="purple.500" />
               <Box>
-                <Text fontWeight="medium" color="gray.900">Job type</Text>
-                <Text color="gray.600">
+                <Text fontSize="xs" color="gray.500" fontWeight="600" textTransform="uppercase">Job Type</Text>
+                <Badge colorScheme="purple" fontSize="sm" px={2} py={1} borderRadius="md">
                   {job?.jobType ?? 'Not specified'}
-                </Text>
+                </Badge>
               </Box>
             </HStack>
-          </VStack>
-        </Box>
-
-        {/* Location */}
-        <Box p={6} borderBottom="1px" borderColor="gray.200">
-          <Heading as="h2" size="lg" color="gray.900" mb={4}>Location</Heading>
-          <HStack spacing={2}>
-            <Box as={MapPin} w={5} h={5} color="gray.500" />
-            <Text color="gray.700">{job?.location ?? 'Location Not Specified'}</Text>
           </HStack>
         </Box>
 
+        <Divider />
+
         {/* Benefits */}
         {job?.benefits?.length > 0 && (
-          <Box p={6} borderBottom="1px" borderColor="gray.200">
-            <Heading as="h2" size="lg" color="gray.900" mb={2}>
-              Benefits
+          <Box p={8}>
+            <Heading as="h2" size="md" color="gray.800" mb={2}>
+              Benefits & Perks
             </Heading>
-            <Text color="gray.500" fontSize="sm" mb={4}>
-              Pulled from the full job description
+            <Text color="gray.500" fontSize="sm" mb={5}>
+              What you'll receive as part of this role
             </Text>
-            <List styleType="disc" pl={4}>
+            <VStack spacing={3} align="start">
               {job.benefits.map((benefit, idx) => (
-                <ListItem key={idx} color="gray.700">{benefit}</ListItem>
+                <HStack key={idx} spacing={3}>
+                  <Box as={CheckCircle} w={5} h={5} color="green.500" />
+                  <Text color="gray.700" fontSize="md">{benefit}</Text>
+                </HStack>
               ))}
-            </List>
+            </VStack>
           </Box>
         )}
 
+        <Divider />
+
         {/* Full Job Description */}
         {job?.description && (
-          <Box p={6}>
-            <Heading as="h2" size="lg" color="gray.900" mb={4}>
-              Full job description
+          <Box p={8}>
+            <Heading as="h2" size="md" color="gray.800" mb={5}>
+              About This Role
             </Heading>
-            <Text lineHeight="relaxed" color="gray.700">{job.description}</Text>
+            <Text lineHeight="tall" color="gray.700" fontSize="md">{job.description}</Text>
           </Box>
         )}
       </Box>
@@ -173,65 +225,86 @@ export default function JobDetail({ job }) {
           left="0"
           w="100vw"
           h="100vh"
-          bg="blackAlpha.600"
+          bg="blackAlpha.700"
           display="flex"
           alignItems="center"
           justifyContent="center"
           zIndex="1000"
+          backdropFilter="blur(4px)"
         >
           <Box
             bg="white"
-            borderRadius="16px"
-            boxShadow="xl"
+            borderRadius="20px"
+            boxShadow="2xl"
             w="90%"
-            maxW="500px"
-            p={6}
+            maxW="520px"
+            p={8}
             position="relative"
           >
-            {/* Close Button */}
             <IconButton
               aria-label="Close"
               icon={<X size={20} />}
               position="absolute"
-              top={3}
-              right={3}
+              top={4}
+              right={4}
               size="sm"
               variant="ghost"
+              borderRadius="full"
+              _hover={{ bg: "gray.100" }}
               onClick={closeModal}
             />
 
-            <Heading size="md" color="blue.600" mb={4} textAlign="center">
-              AI Interview Opportunity
-            </Heading>
+            <VStack spacing={4} mb={6}>
+              <Box 
+                bg="blue.50" 
+                p={4} 
+                borderRadius="full"
+                mb={2}
+              >
+                <Box as={Star} w={8} h={8} color="blue.500" />
+              </Box>
+              
+              <Heading size="lg" color="gray.800" textAlign="center">
+                AI Interview Available
+              </Heading>
 
-            <Text color="gray.700" mb={6} textAlign="center">
-              This job offers an AI-powered interview experience.
-              Would you like to proceed with the AI Interview before submitting your application?
-            </Text>
+              <Text color="gray.600" textAlign="center" fontSize="md" lineHeight="tall">
+                This position offers an AI-powered interview experience. 
+                Would you like to showcase your skills through our AI Interview?
+              </Text>
+            </VStack>
 
             <VStack spacing={3}>
               <Button
                 colorScheme="blue"
                 w="full"
-                py={3}
-                borderRadius="10px"
+                py={6}
+                fontSize="md"
+                fontWeight="600"
+                borderRadius="xl"
+                _hover={{ transform: "translateY(-2px)", shadow: "lg" }}
+                transition="all 0.2s"
                 onClick={handleAiInterviewConfirm}
               >
-                Proceed to AI Interview
+                Start AI Interview
               </Button>
               <Button
                 variant="outline"
                 w="full"
-                py={3}
-                borderRadius="10px"
+                py={6}
+                fontSize="md"
+                fontWeight="600"
+                borderRadius="xl"
+                borderWidth="2px"
+                _hover={{ bg: "gray.50" }}
                 onClick={handleStandardApply}
               >
-                Continue with Job Search
+                Continue Browsing
               </Button>
             </VStack>
 
             <Text fontSize="xs" color="gray.500" textAlign="center" mt={6}>
-              Choose wisely. The AI Interview can provide additional insights into your candidacy.
+              The AI Interview helps employers understand your unique qualifications better.
             </Text>
           </Box>
         </Box>

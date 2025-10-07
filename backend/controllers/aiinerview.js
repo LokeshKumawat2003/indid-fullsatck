@@ -54,7 +54,8 @@ Current question count: ${questionCount}.
 `,
       messages: messages,
     }, {
-      headers: {  'Content-Type': 'application/json',
+      headers: {
+        'x-api-key':   'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01'
       }
     });

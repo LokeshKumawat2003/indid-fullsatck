@@ -18,7 +18,16 @@ import {
   Badge,
   Divider,
 } from "@chakra-ui/react";
-import { FiTrash2, FiFileText, FiGithub, FiCheckCircle, FiXCircle, FiClock, FiSend, FiX } from "react-icons/fi";
+import {
+  FiTrash2,
+  FiFileText,
+  FiGithub,
+  FiCheckCircle,
+  FiXCircle,
+  FiClock,
+  FiSend,
+  FiX,
+} from "react-icons/fi";
 
 // Dummy data for final round candidates
 const dummyFinalRound = [
@@ -30,8 +39,12 @@ const dummyFinalRound = [
     github: "https://github.com/johndoe/todo-app",
     status: "Scheduled",
     finalStatus: "",
+    meetLink: "https://meet.google.com/john-interview", // NEW
     files: [
-      { name: "Assignment.pdf", link: "https://example.com/files/assignment.pdf" },
+      {
+        name: "Assignment.pdf",
+        link: "https://example.com/files/assignment.pdf",
+      },
     ],
   },
   {
@@ -42,6 +55,7 @@ const dummyFinalRound = [
     github: "https://github.com/janesmith/blog-api",
     status: "Scheduled",
     finalStatus: "",
+    meetLink: "https://meet.google.com/jane-interview", // NEW
     files: [],
   },
 ];
@@ -67,7 +81,9 @@ const FinalRound = () => {
     const option = selectedFinal[id];
     if (!option) return;
     setCandidates((prev) =>
-      prev.map((cand) => (cand.id === id ? { ...cand, finalStatus: option } : cand))
+      prev.map((cand) =>
+        cand.id === id ? { ...cand, finalStatus: option } : cand
+      )
     );
     toast({
       title: "Final Status Updated",
@@ -114,7 +130,6 @@ const FinalRound = () => {
       isClosable: true,
     });
 
-    // Hide input after sending
     setShowOfferInput((prev) => ({ ...prev, [id]: false }));
     setOfferText((prev) => ({ ...prev, [id]: "" }));
   };
@@ -127,7 +142,7 @@ const FinalRound = () => {
           Final Round Candidates
         </Heading>
         <Text color="gray.600" fontSize="md">
-          Review and make final hiring decisions
+          Review, join interviews, and make final hiring decisions
         </Text>
       </Box>
 
@@ -143,9 +158,9 @@ const FinalRound = () => {
             borderWidth="1px"
             borderColor="gray.100"
             transition="all 0.3s ease"
-            _hover={{ 
+            _hover={{
               shadow: "md",
-              transform: "translateY(-2px)"
+              transform: "translateY(-2px)",
             }}
             position="relative"
           >
@@ -167,19 +182,21 @@ const FinalRound = () => {
             {/* Header */}
             <Flex justify="space-between" align="start" mb={4}>
               <HStack spacing={4}>
-                <Avatar 
-                  name={cand.fullName} 
-                  size="lg"
-                  bg="purple.500"
-                />
+                <Avatar name={cand.fullName} size="lg" bg="purple.500" />
                 <VStack align="start" spacing={1}>
                   <Text fontWeight="bold" fontSize="lg" color="gray.800">
                     {cand.fullName}
                   </Text>
-                  <Badge colorScheme="purple" fontSize="xs" px={2} py={0.5} rounded="md">
+                  <Badge
+                    colorScheme="purple"
+                    fontSize="xs"
+                    px={2}
+                    py={0.5}
+                    rounded="md"
+                  >
                     {cand.developerType}
                   </Badge>
-                  <Tag 
+                  <Tag
                     colorScheme={cand.status === "Scheduled" ? "green" : "red"}
                     size="sm"
                     rounded="full"
@@ -195,9 +212,9 @@ const FinalRound = () => {
             {/* Links */}
             <VStack align="stretch" spacing={3} mb={4}>
               <HStack spacing={4}>
-                <Link 
-                  href={cand.resume} 
-                  isExternal 
+                <Link
+                  href={cand.resume}
+                  isExternal
                   color="blue.500"
                   fontSize="sm"
                   fontWeight="medium"
@@ -209,9 +226,9 @@ const FinalRound = () => {
                   <Icon as={FiFileText} />
                   Resume
                 </Link>
-                <Link 
-                  href={cand.github} 
-                  isExternal 
+                <Link
+                  href={cand.github}
+                  isExternal
                   color="blue.500"
                   fontSize="sm"
                   fontWeight="medium"
@@ -228,15 +245,21 @@ const FinalRound = () => {
               {/* Files */}
               {cand.files.length > 0 && (
                 <Box>
-                  <Text fontSize="xs" fontWeight="semibold" color="gray.500" mb={2} textTransform="uppercase">
+                  <Text
+                    fontSize="xs"
+                    fontWeight="semibold"
+                    color="gray.500"
+                    mb={2}
+                    textTransform="uppercase"
+                  >
                     Submitted Files
                   </Text>
                   <VStack align="start" spacing={1}>
                     {cand.files.map((file, idx) => (
-                      <Link 
-                        key={idx} 
-                        href={file.link} 
-                        color="blue.500" 
+                      <Link
+                        key={idx}
+                        href={file.link}
+                        color="blue.500"
                         fontSize="sm"
                         isExternal
                         _hover={{ color: "blue.600" }}
@@ -249,10 +272,33 @@ const FinalRound = () => {
               )}
             </VStack>
 
+            {/* Join Interview Button */}
+            {cand.status === "Scheduled" && (
+              <Box mb={4}>
+                <Button
+                  as={Link}
+                  href={cand.meetLink}
+                  isExternal
+                  colorScheme="blue"
+                  size="sm"
+                  leftIcon={<FiClock />}
+                  _focus={{ boxShadow: "none" }}
+                  rounded="lg"
+                >
+                  Join Interview
+                </Button>
+              </Box>
+            )}
+
             {/* Final Status Selection */}
             {cand.status !== "Cancelled" && (
               <Box>
-                <Text fontSize="sm" fontWeight="semibold" color="gray.700" mb={3}>
+                <Text
+                  fontSize="sm"
+                  fontWeight="semibold"
+                  color="gray.700"
+                  mb={3}
+                >
                   Final Decision
                 </Text>
                 <HStack spacing={2} wrap="wrap" mb={3}>
@@ -261,8 +307,16 @@ const FinalRound = () => {
                       key={option.label}
                       size="sm"
                       leftIcon={<Icon as={option.icon} />}
-                      colorScheme={selectedFinal[cand.id] === option.label ? option.color : "gray"}
-                      variant={selectedFinal[cand.id] === option.label ? "solid" : "outline"}
+                      colorScheme={
+                        selectedFinal[cand.id] === option.label
+                          ? option.color
+                          : "gray"
+                      }
+                      variant={
+                        selectedFinal[cand.id] === option.label
+                          ? "solid"
+                          : "outline"
+                      }
                       onClick={() => selectFinalOption(cand.id, option.label)}
                       _focus={{ boxShadow: "none" }}
                       rounded="lg"
@@ -287,15 +341,17 @@ const FinalRound = () => {
                 )}
 
                 {cand.finalStatus && (
-                  <Badge 
+                  <Badge
                     colorScheme={
-                      cand.finalStatus === "Pass" ? "green" : 
-                      cand.finalStatus === "Fail" ? "red" : 
-                      "orange"
-                    } 
-                    fontSize="sm" 
-                    px={3} 
-                    py={1} 
+                      cand.finalStatus === "Pass"
+                        ? "green"
+                        : cand.finalStatus === "Fail"
+                        ? "red"
+                        : "orange"
+                    }
+                    fontSize="sm"
+                    px={3}
+                    py={1}
                     rounded="md"
                     mb={3}
                   >
@@ -306,7 +362,12 @@ const FinalRound = () => {
                 {/* Send Offer Section */}
                 {cand.finalStatus === "Pass" && (
                   <Box mt={4} p={4} bg="green.50" rounded="lg">
-                    <Text fontSize="sm" fontWeight="semibold" color="green.800" mb={3}>
+                    <Text
+                      fontSize="sm"
+                      fontWeight="semibold"
+                      color="green.800"
+                      mb={3}
+                    >
                       Send Job Offer
                     </Text>
                     {!showOfferInput[cand.id] ? (
@@ -327,11 +388,17 @@ const FinalRound = () => {
                           size="sm"
                           value={offerText[cand.id] || ""}
                           onChange={(e) =>
-                            setOfferText((prev) => ({ ...prev, [cand.id]: e.target.value }))
+                            setOfferText((prev) => ({
+                              ...prev,
+                              [cand.id]: e.target.value,
+                            }))
                           }
                           bg="white"
                           rounded="lg"
-                          _focus={{ borderColor: "green.400", boxShadow: "0 0 0 1px #48BB78" }}
+                          _focus={{
+                            borderColor: "green.400",
+                            boxShadow: "0 0 0 1px #48BB78",
+                          }}
                         />
                         <HStack spacing={2}>
                           <Button

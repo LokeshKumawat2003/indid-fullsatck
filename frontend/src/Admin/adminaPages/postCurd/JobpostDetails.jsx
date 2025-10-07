@@ -10,7 +10,7 @@ import {
   SimpleGrid,
 } from "@chakra-ui/react";
 import { useParams } from "react-router-dom";
-import dummyJobs from "../../data/dummyJobs.json";
+import dummyJobs from "../../../data/dummyJobs.json";
 
 const JobPostDetails = () => {
   const { jobId } = useParams();
