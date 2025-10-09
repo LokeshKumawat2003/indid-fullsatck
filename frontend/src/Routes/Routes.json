@@ -36,5 +36,79 @@
       "method": "DELETE",
       "url": "api/post/deleteJobPost"
     }
+  },
+  "userAccount": {
+    "createAccount": {
+      "method": "POST",
+      "url": "api/userAccount",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    },
+    "getAccountById": {
+      "method": "GET",
+      "url": "api/userAccount",
+      "headers": {
+          "Authorization": "Bearer <token>"
+      }
+    },
+    "updateAccount": {
+      "method": "PUT",
+      "url": "api/userAccount/:id",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    },
+    "deleteAccount": {
+      "method": "DELETE",
+      "url": "api/userAccount/:id",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    },
+    "getAllAccounts": {
+      "method": "GET",
+      "url": "api/userAccount",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    }
+  },
+  "application": {
+    "create": {
+      "method": "POST",
+      "url": "api/application/create",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    },
+    "getAll": {
+      "method": "GET",
+      "url": "api/application",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    },
+    "getById": {
+      "method": "GET",
+      "url": "api/application",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    },
+    "summary": {
+      "method": "GET",
+      "url": "api/application/summary",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    },
+    "delete": {
+      "method": "DELETE",
+      "url": "api/application/:id",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
+    }
   }
 }

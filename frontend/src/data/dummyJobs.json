@@ -14,7 +14,8 @@
     "benefits": ["Health Insurance", "401k Match", "Paid Time Off"],
     "easyApply": true,
     "description": "We are looking for a Senior Frontend Engineer with strong React experience to build scalable UI components and improve user experience.",
-    "aiinterview": false
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job2",
@@ -31,7 +32,8 @@
     "benefits": ["Health Insurance", "Gym Membership", "Stock Options"],
     "easyApply": false,
     "description": "Join our backend team to design and optimize APIs, databases, and server infrastructure with Node.js and PostgreSQL.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job3",
@@ -48,7 +50,8 @@
     "benefits": ["Flexible Hours", "Learning Stipend"],
     "easyApply": true,
     "description": "We need a creative UI/UX Designer to improve the usability of our SaaS platform. Figma and Adobe XD experience required.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job4",
@@ -65,7 +68,8 @@
     "benefits": ["Health Insurance", "Paid Family Leave", "Annual Bonus"],
     "easyApply": false,
     "description": "Work with big data pipelines and machine learning models to deliver insights that power strategic decisions.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job5",
@@ -82,7 +86,8 @@
     "benefits": ["Dental Insurance", "Gym Membership"],
     "easyApply": true,
     "description": "Looking for a React Native developer to build high-quality mobile applications for Android and iOS.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job6",
@@ -99,7 +104,8 @@
     "benefits": ["Health Insurance", "401k", "Remote Stipend"],
     "easyApply": false,
     "description": "Maintain and optimize cloud infrastructure using AWS, Kubernetes, and Terraform.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userId":"ad1"
   },
   {
     "id": "job7",
@@ -116,7 +122,8 @@
     "benefits": ["Paid Vacation", "Health Benefits", "Retirement Plan"],
     "easyApply": true,
     "description": "Lead cross-functional teams to deliver software projects on time and within budget.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job8",
@@ -133,7 +140,8 @@
     "benefits": ["Health Insurance", "Stock Options"],
     "easyApply": true,
     "description": "Automate CI/CD pipelines and manage scalable infrastructure across multi-cloud environments.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job9",
@@ -150,7 +158,8 @@
     "benefits": ["401k Match", "Flexible Hours"],
     "easyApply": false,
     "description": "Gather business requirements, create documentation, and ensure alignment between stakeholders and developers.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job10",
@@ -167,7 +176,8 @@
     "benefits": ["Health Insurance", "Equity Options", "Paid Research Time"],
     "easyApply": false,
     "description": "Conduct research in AI and deep learning, publish papers, and collaborate with universities.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job11",
@@ -184,7 +194,8 @@
     "benefits": ["Health Insurance", "Annual Bonus"],
     "easyApply": true,
     "description": "Plan and execute digital marketing campaigns across SEO, PPC, and social media.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job12",
@@ -201,7 +212,8 @@
     "benefits": ["Health Insurance", "Stock Options"],
     "easyApply": true,
     "description": "Work with React, Node.js, and MongoDB to build enterprise-level web applications.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job13",
@@ -218,7 +230,8 @@
     "benefits": ["Security Clearance Bonus", "Health Insurance"],
     "easyApply": false,
     "description": "Monitor and secure IT systems, respond to incidents, and ensure compliance with regulations.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job14",
@@ -235,7 +248,8 @@
     "benefits": ["Equity", "Flexible Hours", "Health Insurance"],
     "easyApply": true,
     "description": "Define product strategy, lead roadmap planning, and collaborate with engineering and design teams.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   },
   {
     "id": "job15",
@@ -252,6 +266,7 @@
     "benefits": ["Health Insurance", "Annual Bonus", "Training Budget"],
     "easyApply": false,
     "description": "Develop and execute test cases, ensure product quality, and work closely with developers to resolve issues.",
-    "aiinterview": true
+    "aiinterview": false,
+    "userid":"ad1"
   }
 ]

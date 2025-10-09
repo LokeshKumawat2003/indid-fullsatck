@@ -2,6 +2,12 @@ import { Box, Text, HStack, Badge, IconButton, VStack } from "@chakra-ui/react"
 import { FaStar, FaBolt, FaBookmark, FaMapMarkerAlt, FaCheckCircle } from "react-icons/fa"
 
 export default function JobCard({ job, onClick }) {
+  // Normalize benefits to an array to avoid runtime errors when the API returns a string or null
+  const benefits = Array.isArray(job?.benefits)
+    ? job.benefits
+    : typeof job?.benefits === 'string'
+    ? job.benefits.split(',').map(b => b.trim()).filter(Boolean)
+    : [];
   return (
     <Box
       borderWidth="0"
@@ -88,9 +94,9 @@ export default function JobCard({ job, onClick }) {
         )}
       </HStack>
 
-      {job.benefits && job.benefits.length > 0 && (
+      {benefits.length > 0 && (
         <VStack align="start" spacing={1.5}>
-          {job.benefits.map((benefit, index) => (
+          {benefits.map((benefit, index) => (
             <HStack key={index} spacing={2}>
               <FaCheckCircle color="#48BB78" size="10px" />
               <Text fontSize="xs" color="gray.600">

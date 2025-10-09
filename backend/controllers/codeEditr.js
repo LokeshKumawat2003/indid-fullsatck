@@ -103,7 +103,7 @@ codeediter.post('/code', async (req, res) => {
       },
       {
         headers: {
-            'Content-Type': 'application/json',
+          'x-api-key':     'Content-Type': 'application/json',
           'anthropic-version': '2023-06-01'
         }
       }

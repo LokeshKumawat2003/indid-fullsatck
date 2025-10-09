@@ -1,22 +1,58 @@
 "use client";
 import React from "react";
-import { Box, Flex, Text, VStack } from "@chakra-ui/react";
+import { Box, Flex, Text, VStack, useToast } from "@chakra-ui/react";
 import { useLocation } from "react-router-dom";
 import JobList from "../components/jobpost/JobList";
 import JobDetail from "../components/jobpost/JobDetail";
 import Filters from "../components/jobpost/Filters";
 import dummyJobs from "../data/dummyJobs.json";
+import { appRequest } from "../Routes/backendRutes";
 
 const initialJobs = Array.isArray(dummyJobs) ? dummyJobs : [];
 
 export default function JobPost() {
   const location = useLocation();
-  const [originalJobs] = React.useState(initialJobs);
+  const [originalJobs, setOriginalJobs] = React.useState(initialJobs);
   const [jobs, setJobs] = React.useState(initialJobs);
   const [selectedJob, setSelectedJob] = React.useState(initialJobs[0] || null);
+  const [loading, setLoading] = React.useState(false);
+  const toast = useToast();
   const [searchParams, setSearchParams] = React.useState({ jobTitle: '', location: '' });
   const [activeFilters, setActiveFilters] = React.useState({});
+    const fetchJobs = async () => {
+        try {
+          setLoading(true);
+          const response = await appRequest("post", "getAllJobPosts");
+          if (Array.isArray(response)) {
+            // Keep a copy of original jobs for filtering
+            setOriginalJobs(response);
+            setJobs(response);
+            setSelectedJob(response[0] || null);
+          } else {
+            console.warn("API response for job posts was not an array:", response);
+            setOriginalJobs([]);
+            setJobs([]); // Ensure jobs is always an array
+            setSelectedJob(null);
+          }
+        } catch (error) {
+          console.error("Error fetching job posts:", error);
+          toast({
+            title: "Error fetching job posts",
+            description: error?.message || "Something went wrong",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+        } finally {
+          setLoading(false);
+        }
+    };
 
+      // Fetch jobs from backend when component mounts
+      React.useEffect(() => {
+        fetchJobs();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
   // Comprehensive job filtering function
   const filterJobs = React.useCallback(() => {
     let filteredJobs = [...originalJobs];

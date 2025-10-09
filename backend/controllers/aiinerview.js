@@ -1,36 +1,50 @@
-const express = require('express');
-const axios = require('axios');
-const InterviewSession = require('../models/InterviewSession'); 
+const express = require("express");
+const axios = require("axios");
+const InterviewSession = require("../models/InterviewSession");
 const ai = express.Router();
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-ai.post('/chat', async (req, res) => {
+ai.post("/chat", async (req, res) => {
   try {
-    const { prompt, model, sessionId, userId, interviewStage, conversationHistory, questionCount } = req.body;
+    const {
+      prompt,
+      model,
+      sessionId,
+      userId,
+      interviewStage,
+      conversationHistory,
+      questionCount,
+    } = req.body;
 
     let session;
     if (sessionId) {
       session = await InterviewSession.findById(sessionId);
       if (!session) {
-        return res.status(404).json({ success: false, error: "Interview session not found." });
+        return res
+          .status(404)
+          .json({ success: false, error: "Interview session not found." });
       }
     } else {
-      session = new InterviewSession({ userId: userId || new mongoose.Types.ObjectId() });
+      session = new InterviewSession({
+        userId: userId || new mongoose.Types.ObjectId(),
+      });
       await session.save();
     }
 
-    const messages = conversationHistory.map(msg => ({
-      role: msg.role === "user" ? "user" : "assistant", 
+    const messages = conversationHistory.map((msg) => ({
+      role: msg.role === "user" ? "user" : "assistant",
       content: msg.text,
     }));
 
-    messages.push({ role: "user", content: prompt }); 
+    messages.push({ role: "user", content: prompt });
 
-    const response = await axios.post('https://api.anthropic.com/v1/messages', { 
-      model: model || "claude-3-5-sonnet-20241022",
-      max_tokens: 4000,
-      temperature: 0.7,
-      system: `You are Lokesh Kumawat. Do not repeat your introduction with every question. 
+    const response = await axios.post(
+      "https://api.anthropic.com/v1/messages",
+      {
+        model: model || "claude-3-5-sonnet-20241022",
+        max_tokens: 4000,
+        temperature: 0.7,
+        system: `You are Lokesh Kumawat. Do not repeat your introduction with every question. 
 *Fully* ensure each stage is completed before moving forward.  
 
 Rules:
@@ -52,22 +66,25 @@ Rules:
 Your responses must stay concise, relevant, and move the candidate smoothly to the next stage or next question in the current stage.  
 Current question count: ${questionCount}.
 `,
-      messages: messages,
-    }, {
-      headers: {
-        'x-api-key':   'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01'
+        messages: messages,
+      },
+      {
+        headers: {
+          "x-api-key":  "Content-Type": "application/json",
+          "anthropic-version": "2023-06-01",
+        },
       }
-    });
+    );
 
-
-    const aiResponseText = response.data.content.map((msg) => msg.text).join("\n");
+    const aiResponseText = response.data.content
+      .map((msg) => msg.text)
+      .join("\n");
 
     session.questionsAndAnswers.push({
       question: prompt,
       aiResponse: aiResponseText,
     });
-    
+
     let score = null;
     let nextRound = false;
 
@@ -81,7 +98,7 @@ Current question count: ${questionCount}.
 
     session.score = score;
     session.nextRound = nextRound;
-    
+
     await session.save();
 
     res.status(200).json({
@@ -91,12 +108,11 @@ Current question count: ${questionCount}.
       score: score,
       nextRound: nextRound,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
       error: "Sorry, I couldn't generate a response right now.",
-      details: error.response?.data?.error?.message || error.message
+      details: error.response?.data?.error?.message || error.message,
     });
   }
 });

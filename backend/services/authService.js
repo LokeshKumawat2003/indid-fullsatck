@@ -33,6 +33,26 @@ const authService = {
                 throw new Error("User creation failed");
             }
 
+            // Create a UserAccount for the new user
+            const UserAccount = require('../models/userAccount');
+            const newUserAccount = await UserAccount.create({
+                userId: user._id,
+                fullName: name,
+                email: email,
+                mobileNumber: "", // Default empty, user will update later
+                developerType: "Other", // Default, user will update later
+                education: "", // Default empty, user will update later
+                githubProfile: "", // Default empty, user will update later
+                resumeUrl: "", // Default empty, user will update later
+                skills: [], // Default empty array, user will update later
+            });
+
+            if (!newUserAccount) {
+                // Optionally, handle cleanup (e.g., delete the created User if UserAccount creation fails)
+                await UserSchema.findByIdAndDelete(user._id);
+                throw new Error("User Account creation failed");
+            }
+
             const { password: _, ...userWithoutPassword } = user.toObject();
 
             return {

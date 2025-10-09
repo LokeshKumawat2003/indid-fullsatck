@@ -9,7 +9,9 @@ const authMiddleware = (req, res, next) => {
     try {
     
         const decoded = jwt.verify(token, "lokesh");
-        req.user = decoded;
+        // console.log("Decoded JWT:", decoded);
+        req.user = { id: decoded.id }; // Assign decoded.id to req.user.id
+        // console.log("req.user after decode:", req.user);
         next();
     } catch (err) {
         console.error(err); // Log the error for debugging

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Box,
     Heading,
@@ -19,39 +19,94 @@ import {
     Divider,
 } from "@chakra-ui/react";
 import { FiMail, FiGithub, FiFileText, FiSend, FiUsers } from "react-icons/fi";
-
-// Dummy application data with developerType
-const dummyApplications = [
-    {
-        id: "app1",
-        fullName: "John Doe",
-        email: "johndoe@example.com",
-        education: "M.Sc. Computer Science",
-        developerType: "Frontend Developer",
-        github: "https://github.com/johndoe",
-        resume: "https://example.com/resume/johndoe.pdf",
-        skills: ["React", "Node.js", "QA Testing"],
-        appliedFor: "Software QA Engineer",
-    },
-    {
-        id: "app2",
-        fullName: "Jane Smith",
-        email: "janesmith@example.com",
-        education: "B.Tech Information Technology",
-        developerType: "Fullstack Developer",
-        github: "https://github.com/janesmith",
-        resume: "https://example.com/resume/janesmith.pdf",
-        skills: ["JavaScript", "UI/UX", "Automation"],
-        appliedFor: "Frontend Developer",
-    },
-];
+import { appRequest } from "../../Routes/backendRutes";
 
 const Applications = () => {
-    const [applications, setApplications] = useState(dummyApplications);
+    const [applications, setApplications] = useState([]);
     const [selectedApps, setSelectedApps] = useState([]);
     const [selectAll, setSelectAll] = useState(false);
     const [assignment, setAssignment] = useState("");
     const toast = useToast();
+
+    useEffect(() => {
+        const fetchApplications = async () => {
+            try {
+                // Use the 'application' group and the 'getById' action so the backend
+                // can resolve the user id from the auth token (no explicit id passed).
+                const res = await appRequest("application", "getById");
+                console.log("Raw fetched applications response:", res);
+                // Log array elements when available (supports response directly or under `data`).
+                if (Array.isArray(res)) {
+                    res.forEach((el, i) => console.log(el.job, "element"));
+                } else if (res && Array.isArray(res.data)) {
+                    res.data.forEach((el, i) => console.log(el, "element (from data)"));
+                } else {
+                    console.log("Response is not an array — logging full payload:", res);
+                }
+                // Normalize possible response shapes into an array of application objects.
+                const normalize = (payload) => {
+                    if (!payload) return [];
+                    if (Array.isArray(payload)) return payload;
+                    if (Array.isArray(payload.applications)) return payload.applications;
+                    if (Array.isArray(payload.application)) return payload.application;
+                    if (payload.application && typeof payload.application === "object") return [payload.application];
+                    if (payload.applications && typeof payload.applications === "object") return [payload.applications];
+                    if (payload.data && Array.isArray(payload.data)) return payload.data;
+                    if (payload.data && typeof payload.data === "object") return [payload.data];
+                    if (typeof payload === "object") return [payload];
+                    return [];
+                };
+
+                // Prefer `res.data` when backend returns { success, data, meta }
+                const source = Array.isArray(res) ? res : (res && Array.isArray(res.data) ? res.data : res);
+                const apps = normalize(source);
+                console.log("Normalized applications:", apps);
+
+                // Map into a predictable, flat shape for the UI (pick nested user/job fields when present)
+                const normalizedApps = apps.map((a) => {
+                    const id = a._id || a.id || (a.job && a.job._id) || (a.user && a.user._id) || `${a.email || 'unknown'}-${Math.random().toString(36).slice(2,8)}`;
+
+                    // Prefer skills from the application, then user, then job
+                    const skills = Array.isArray(a.skills)
+                        ? a.skills
+                        : Array.isArray(a.user?.skills)
+                        ? a.user.skills
+                        : Array.isArray(a.job?.skills)
+                        ? a.job.skills
+                        : (typeof a.skills === 'string' ? a.skills.split(',').map(s=>s.trim()) : []);
+
+                    // Github/resume field names in DB: githubProfile, resumeUrl — fallback to other possible keys
+                    const github = a.github || a.user?.github || a.user?.githubProfile || a.user?.githubURL || a.user?.github_url || '#';
+                    const resume = a.resume || a.user?.resume || a.user?.resumeUrl || a.user?.resumeURL || a.user?.resume_url || '#';
+
+                    return {
+                        id,
+                        fullName: a.fullName || a.user?.fullName || a.user?.name || 'Unnamed Applicant',
+                        email: a.email || a.user?.email || a.user?.contact || 'no-email@example.com',
+                        appliedFor: a.appliedFor || a.job?.title || a.position || '—',
+                        developerType: a.developerType || a.role || a.user?.developerType || a.job?.company || 'N/A',
+                        skills,
+                        github,
+                        resume,
+                        raw: a,
+                    };
+                });
+
+                setApplications(normalizedApps);
+            } catch (err) {
+                console.error("Failed fetching applications", err);
+                toast({
+                    title: "Failed to load applications",
+                    description: err?.message || "An error occurred while fetching applications.",
+                    status: "error",
+                    duration: 3000,
+                    isClosable: true,
+                });
+            }
+        };
+
+        fetchApplications();
+    }, [toast]);
 
     // Handle selecting a single applicant
     const handleSelect = (id) => {
@@ -169,15 +224,19 @@ const Applications = () => {
 
             {/* Applications Grid */}
             <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-                {applications.map((app) => (
+                {applications.map((app) => {
+                    const appId = app?.id || app?._id || `${app?.email || 'unknown'}-${Math.random().toString(36).slice(2,8)}`;
+                    const skills = Array.isArray(app?.skills) ? app.skills : (typeof app?.skills === 'string' ? app.skills.split(',').map(s=>s.trim()) : []);
+
+                    return (
                     <Box
-                        key={app.id}
+                        key={appId}
                         p={6}
                         bg="white"
                         borderRadius="2xl"
                         shadow="sm"
                         borderWidth="1px"
-                        borderColor={selectedApps.includes(app.id) ? "blue.300" : "gray.100"}
+                        borderColor={selectedApps.includes(appId) ? "blue.300" : "gray.100"}
                         transition="all 0.3s ease"
                         _hover={{ 
                             shadow: "md",
@@ -195,13 +254,13 @@ const Applications = () => {
                                 />
                                 <VStack align="start" spacing={1}>
                                     <Text fontWeight="bold" fontSize="lg" color="gray.800">
-                                        {app.fullName}
+                                        {app.fullName || app?.name || 'Unnamed Applicant'}
                                     </Text>
                                     <Text fontSize="sm" color="gray.600" fontWeight="medium">
-                                        {app.appliedFor}
+                                        {app.appliedFor || app?.position || '—'}
                                     </Text>
                                     <Badge colorScheme="purple" fontSize="xs" px={2} py={0.5} rounded="md">
-                                        {app.developerType}
+                                        {app.developerType || app?.role || 'N/A'}
                                     </Badge>
                                 </VStack>
                             </HStack>
@@ -220,14 +279,14 @@ const Applications = () => {
                         <VStack align="stretch" spacing={3} mb={4}>
                             <Flex align="center" gap={2} color="gray.600">
                                 <Icon as={FiMail} boxSize={4} />
-                                <Text fontSize="sm">{app.email}</Text>
+                                <Text fontSize="sm">{app.email || app?.contact || 'no-email@example.com'}</Text>
                             </Flex>
                             <Text fontSize="sm" color="gray.700">
                                 <Text as="span" fontWeight="semibold">Education:</Text> {app.education}
                             </Text>
                             <HStack spacing={4}>
                                 <Link 
-                                    href={app.github} 
+                                    href={app.github || '#'} 
                                     isExternal 
                                     color="blue.500"
                                     fontSize="sm"
@@ -241,7 +300,7 @@ const Applications = () => {
                                     GitHub
                                 </Link>
                                 <Link 
-                                    href={app.resume} 
+                                    href={app.resume || '#'} 
                                     isExternal 
                                     color="blue.500"
                                     fontSize="sm"
@@ -263,7 +322,7 @@ const Applications = () => {
                                 Skills
                             </Text>
                             <HStack spacing={2} wrap="wrap">
-                                {app.skills.map((skill, idx) => (
+                                {skills.map((skill, idx) => (
                                     <Tag 
                                         key={idx} 
                                         size="md" 
@@ -278,7 +337,7 @@ const Applications = () => {
                             </HStack>
                         </Box>
                     </Box>
-                ))}
+                )})}
             </SimpleGrid>
         </Box>
     );

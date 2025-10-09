@@ -22,20 +22,61 @@ import {
   X,
   CheckCircle
 } from "lucide-react";
-import { useState } from "react"; 
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { appRequest } from "../../Routes/backendRutes";
+import { useToast } from "@chakra-ui/react";
 
 export default function JobDetail({ job }) {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const navigate = useNavigate()
-  const handleApplyNow = () => setShowCustomModal(true);
+  // const handleApplyNow = () => setShowCustomModal(true);
   const closeModal = () => setShowCustomModal(false);
 
   const handleAiInterviewConfirm = () => {
     navigate("/ai")
     closeModal();
   };
+  const toast = useToast();
+  const [isApplying, setIsApplying] = useState(false);
 
+  const handleApplyNow = async () => {
+    try {
+      setIsApplying(true);
+      // get current user's account (backend will resolve 'me' from token)
+      const response = await appRequest("userAccount", "getAccountById");
+      const userData = Array.isArray(response) ? response[0] : response;
+
+      const payload = {
+        userAccount: userData?._id,
+        jobpostID: job?._id || job?.id,
+        adminId: job?.userid || job?.userId || null,
+      };
+
+      // Basic validation: ensure jobpostID looks like an ObjectId (24 hex chars)
+      const jobId = payload.jobpostID;
+      if (!jobId || !/^[0-9a-fA-F]{24}$/.test(String(jobId))) {
+        toast({ title: "Invalid job", description: "This job is not eligible for application or is missing a proper id.", status: "error", duration: 4000, isClosable: true });
+        return;
+      }
+
+      const createRes = await appRequest("application", "create", payload);
+      console.log("Application response:", createRes);
+      if (createRes && createRes.success) {
+        toast({ title: "Application submitted", description: "Your application was created.", status: "success", duration: 4000, isClosable: true });
+        // open AI interview modal to offer next step
+        // setShowCustomModal(true);
+      } else {
+        const msg = (createRes && createRes.message) || "Failed to submit application";
+        toast({ title: "Application failed", description: msg, status: "error", duration: 4000, isClosable: true });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: err.message || "Server error", status: "error", duration: 4000, isClosable: true });
+    } finally {
+      setIsApplying(false);
+    }
+  };
   const handleStandardApply = () => {
     console.log("Submitting standard application");
     closeModal();
@@ -53,20 +94,20 @@ export default function JobDetail({ job }) {
               </Heading>
 
               <HStack spacing={3} flexWrap="wrap">
-                <Link 
-                  color="blue.600" 
-                  fontWeight="600" 
+                <Link
+                  color="blue.600"
+                  fontWeight="600"
                   fontSize="lg"
                   _hover={{ color: "blue.700", textDecoration: "underline" }}
                 >
                   {job?.company ?? 'Company Not Specified'}
                 </Link>
                 {job?.rating && (
-                  <HStack 
-                    spacing={1} 
-                    bg="white" 
-                    px={3} 
-                    py={1} 
+                  <HStack
+                    spacing={1}
+                    bg="white"
+                    px={3}
+                    py={1}
                     borderRadius="full"
                     shadow="sm"
                   >
@@ -85,10 +126,10 @@ export default function JobDetail({ job }) {
                 </Text>
               </HStack>
 
-              <HStack 
-                bg="green.50" 
-                px={4} 
-                py={2} 
+              <HStack
+                bg="green.50"
+                px={4}
+                py={2}
                 borderRadius="md"
                 borderWidth="1px"
                 borderColor="green.200"
@@ -122,11 +163,11 @@ export default function JobDetail({ job }) {
             </HStack>
           </HStack>
 
-          <Button 
-            bg="blue.600" 
-            _hover={{ bg: "blue.700", transform: "translateY(-2px)" }} 
-            color="white" 
-            px={8} 
+          <Button
+            bg="blue.600"
+            _hover={{ bg: "blue.700", transform: "translateY(-2px)" }}
+            color="white"
+            px={8}
             py={6}
             fontSize="md"
             fontWeight="600"
@@ -146,11 +187,11 @@ export default function JobDetail({ job }) {
           </Heading>
 
           <HStack spacing={8} flexWrap="wrap">
-            <HStack 
-              spacing={3} 
-              bg="gray.50" 
-              px={5} 
-              py={4} 
+            <HStack
+              spacing={3}
+              bg="gray.50"
+              px={5}
+              py={4}
               borderRadius="lg"
               flex="1"
               minW="200px"
@@ -162,11 +203,11 @@ export default function JobDetail({ job }) {
               </Box>
             </HStack>
 
-            <HStack 
-              spacing={3} 
-              bg="gray.50" 
-              px={5} 
-              py={4} 
+            <HStack
+              spacing={3}
+              bg="gray.50"
+              px={5}
+              py={4}
               borderRadius="lg"
               flex="1"
               minW="200px"
@@ -185,7 +226,15 @@ export default function JobDetail({ job }) {
         <Divider />
 
         {/* Benefits */}
-        {job?.benefits?.length > 0 && (
+        {(() => {
+          // Normalize benefits into an array (handles string, array, or missing)
+          const benefits = Array.isArray(job?.benefits)
+            ? job.benefits
+            : typeof job?.benefits === 'string'
+            ? job.benefits.split(',').map(b => b.trim()).filter(Boolean)
+            : [];
+
+          return benefits.length > 0 ? (
           <Box p={8}>
             <Heading as="h2" size="md" color="gray.800" mb={2}>
               Benefits & Perks
@@ -194,7 +243,7 @@ export default function JobDetail({ job }) {
               What you'll receive as part of this role
             </Text>
             <VStack spacing={3} align="start">
-              {job.benefits.map((benefit, idx) => (
+              {benefits.map((benefit, idx) => (
                 <HStack key={idx} spacing={3}>
                   <Box as={CheckCircle} w={5} h={5} color="green.500" />
                   <Text color="gray.700" fontSize="md">{benefit}</Text>
@@ -202,7 +251,8 @@ export default function JobDetail({ job }) {
               ))}
             </VStack>
           </Box>
-        )}
+          ) : null;
+        })()}
 
         <Divider />
 
@@ -219,7 +269,7 @@ export default function JobDetail({ job }) {
 
       {/* Custom Modal */}
       {showCustomModal && (
-        <Box 
+        <Box
           position="fixed"
           top="0"
           left="0"
@@ -255,21 +305,21 @@ export default function JobDetail({ job }) {
             />
 
             <VStack spacing={4} mb={6}>
-              <Box 
-                bg="blue.50" 
-                p={4} 
+              <Box
+                bg="blue.50"
+                p={4}
                 borderRadius="full"
                 mb={2}
               >
                 <Box as={Star} w={8} h={8} color="blue.500" />
               </Box>
-              
+
               <Heading size="lg" color="gray.800" textAlign="center">
                 AI Interview Available
               </Heading>
 
               <Text color="gray.600" textAlign="center" fontSize="md" lineHeight="tall">
-                This position offers an AI-powered interview experience. 
+                This position offers an AI-powered interview experience.
                 Would you like to showcase your skills through our AI Interview?
               </Text>
             </VStack>
